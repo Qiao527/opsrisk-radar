@@ -6,3 +6,5 @@ data/*.db
 data/raw/
 node_modules/
 .DS_Store
+data/*.db-shm
+data/*.db-wal
