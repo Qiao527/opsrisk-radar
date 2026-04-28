@@ -1,0 +1,2 @@
+[console_scripts]
+opsrisk = opsrisk.__main__:main

@@ -1,0 +1,102 @@
+# OpsRisk Radar
+
+**Supply Chain & Operations Risk Intelligence Brief** — an automated pipeline that collects logistics, procurement, and operations technology news from RSS feeds, scores each article for business risk, and generates a daily Markdown brief.
+
+## How It Works
+
+```
+ RSS Feeds ──> Fetch ──> Score ──> Brief
+                              │
+                        ┌─────┴──────┐
+                        │  SQLite DB  │
+                        └────────────┘
+```
+
+1. **Fetch** — ingests 6 RSS feeds from logistics, procurement, and operations tech sources concurrently
+2. **Store** — saves articles to SQLite with deduplication by URL
+3. **Score** — evaluates each article across 5 risk dimensions using keyword-based rules
+4. **Brief** — assembles top signals into a structured Markdown daily brief
+
+## Scoring Dimensions
+
+| Dimension | Weight | What It Measures |
+|-----------|--------|-----------------|
+| Disruption Risk | 30% | Likelihood of operational disruption (strikes, shortages, port congestion, etc.) |
+| Business Impact | 25% | Financial magnitude (revenue impact, costs, tariffs, etc.) |
+| Strategic Relevance | 20% | Alignment with long-term strategy (reshoring, automation, ESG, etc.) |
+| Actionability | 15% | Regulatory or deadline-driven urgency (compliance, audits, policy changes) |
+| Signal Strength | 10% | Specificity and authority of the signal (named entities, numbers, credible sources) |
+
+Composite score = weighted average on a 1-10 scale.
+
+Scoring is rule-based in v1. The architecture supports adding LLM-based scoring as a future enhancement.
+
+## Quick Start
+
+```bash
+# Clone and set up
+git clone <repo-url> && cd opsrisk-radar
+python3 -m venv .venv && source .venv/bin/activate
+
+# Install
+pip install -e .
+
+# Run the full pipeline
+python -m opsrisk run
+
+# Or run individual steps
+python -m opsrisk fetch    # just fetch RSS feeds
+python -m opsrisk score    # score unscored articles
+python -m opsrisk brief    # generate today's brief
+```
+
+The generated brief appears in `briefs/YYYY-MM-DD.md`.
+
+### Requirements
+
+- Python 3.11+ (uses `tomllib` from stdlib)
+- Dependencies: `feedparser`, `httpx`, `pydantic`
+
+## Project Structure
+
+```
+opsrisk-radar/
+├── src/opsrisk/          # Core library
+│   ├── config.py         # TOML config loader
+│   ├── models.py         # Data models (Article, Score, Brief)
+│   ├── database.py       # SQLite schema and operations
+│   ├── feed.py           # RSS feed fetching and parsing
+│   ├── scorer.py         # Rule-based risk scoring engine
+│   ├── brief.py          # Markdown brief generator
+│   └── __main__.py       # CLI entry point
+├── config/
+│   └── sources.toml      # RSS feed list and scoring weights
+├── data/                 # SQLite database (auto-created)
+├── briefs/               # Generated daily briefs
+└── scripts/run.sh        # Convenience runner script
+```
+
+## Configuration
+
+Edit `config/sources.toml` to add or remove RSS feeds. Each entry needs a name, URL, category (logistics/procurement/operations), and enabled flag.
+
+```toml
+[[feeds]]
+name = "Supply Chain Dive"
+url = "https://www.supplychaindive.com/feeds/news/"
+category = "logistics"
+enabled = true
+```
+
+Scoring weights are also configurable under the `[scoring]` section.
+
+## Roadmap
+
+- LLM-enhanced scoring for richer signal analysis
+- Email or Slack delivery of daily briefs
+- Historical trend tracking and anomaly detection
+- Lightweight web dashboard
+
+## License
+
+MIT

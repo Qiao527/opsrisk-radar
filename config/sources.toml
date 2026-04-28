@@ -1,0 +1,38 @@
+[scoring]
+composite_weights = { disruption_risk = 0.45, business_impact = 0.25, strategic_relevance = 0.05, actionability = 0.15, signal_strength = 0.10 }
+
+[[feeds]]
+name = "Supply Chain Dive"
+url = "https://www.supplychaindive.com/feeds/news/"
+category = "logistics"
+enabled = true
+
+[[feeds]]
+name = "Transport Topics"
+url = "https://www.ttnews.com/rss.xml"
+category = "logistics"
+enabled = true
+
+[[feeds]]
+name = "PYMNTS Supply Chain"
+url = "https://www.pymnts.com/category/supply-chain/feed/"
+category = "logistics"
+enabled = true
+
+[[feeds]]
+name = "Spend Matters"
+url = "https://spendmatters.com/feed/"
+category = "procurement"
+enabled = true
+
+[[feeds]]
+name = "SupplyChainQuarterly"
+url = "https://www.supplychainquarterly.com/rss/"
+category = "operations"
+enabled = true
+
+[[feeds]]
+name = "Interact Analysis"
+url = "https://interactanalysis.com/feed/"
+category = "operations"
+enabled = true

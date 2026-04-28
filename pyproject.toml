@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "opsrisk-radar"
+version = "0.1.0"
+description = "AI-powered Supply Chain & Operations Risk Intelligence Brief system"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "OpsRisk Radar" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Office/Business :: Financial :: Risk Management",
+    "Programming Language :: Python :: 3",
+]
+
+dependencies = [
+    "feedparser>=6.0",
+    "httpx>=0.27",
+    "pydantic>=2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-username/opsrisk-radar"
+
+[project.scripts]
+opsrisk = "opsrisk.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
