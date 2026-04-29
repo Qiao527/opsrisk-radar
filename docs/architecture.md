@@ -4,36 +4,14 @@ OpsRisk Radar is a four-stage ETL pipeline: fetch, store, score, brief. Each sta
 
 ## Pipeline Overview
 
-```
-                    config/sources.toml
-                           |
-                           v
-                    +-----------+
-                    |  feed.py  |  (httpx + feedparser)
-                    +-----------+
-                           |
-                     RSS articles
-                           |
-                           v
-                    +-------------+
-                    | database.py |  (SQLite)
-                    +-------------+
-                           |
-                 articles table (unscored)
-                           |
-                           v
-                    +-----------+
-                    | scorer.py |  (regex keyword matching)
-                    +-----------+
-                           |
-                 scores table (joined to articles)
-                           |
-                           v
-                    +----------+
-                    | brief.py |  (Markdown renderer)
-                    +----------+
-                           |
-                    briefs/YYYY-MM-DD.md
+```mermaid
+flowchart TD
+    CFG[config/sources.toml] --> F[feed.py<br/>httpx + feedparser]
+    F -->|RSS articles| DB[(database.py<br/>SQLite)]
+    DB -->|unscored articles| S[scorer.py<br/>regex keyword matching]
+    S -->|scored articles| DB
+    DB -->|scored articles| BR[Brief<br/>brief.py<br/>Markdown renderer]
+    BR --> OUT[Briefs<br/>briefs/YYYY-MM-DD.md]
 ```
 
 ## Stage 1: Configuration

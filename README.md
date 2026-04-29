@@ -16,12 +16,13 @@ OpsRisk Radar automates that triage. It ingests RSS feeds from logistics, procur
 
 ## How It Works
 
-```
- RSS Feeds ──> Fetch ──> Score ──> Brief
-                          │
-                    ┌─────┴──────┐
-                    │  SQLite DB  │
-                    └────────────┘
+```mermaid
+flowchart LR
+    A[RSS Feeds] --> B[Fetch&lt;br/&gt;feed.py]
+    B --> C[(SQLite&lt;br/&gt;database.py)]
+    C --> D[Score&lt;br/&gt;scorer.py]
+    D --> E[Brief&lt;br/&gt;brief.py]
+    E --> F[briefs/&lt;br/&gt;YYYY-MM-DD.md]
 ```
 
 See [`docs/architecture.md`](docs/architecture.md) for a detailed breakdown of each stage.

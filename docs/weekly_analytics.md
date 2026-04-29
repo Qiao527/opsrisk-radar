@@ -45,6 +45,50 @@ These are display-only aggregates and do not affect article scoring.
 
 Each report includes a timestamp and a reminder to run `python -m opsrisk validate` for full integrity checks.
 
+## Visual Elements
+
+The weekly report uses two visual enhancements that render in any Markdown viewer:
+
+### ASCII Bar Charts
+
+Horizontal bars using Unicode block characters (`\u2588` filled, `\u2591` light shade) appear in four sections:
+
+| Section | Bar represents | Scale |
+|---------|----------------|-------|
+| Executive Summary | Severity volume per tier (HIGH/MEDIUM/LOW) | Proportional to total articles |
+| Avg Scores by Source | Mean composite score per source | Out of 10 |
+| Avg Disruption Risk by Category | Mean disruption risk per category | Out of 10 |
+| Risk Themes | Article count per theme | Proportional to total articles |
+
+Example of a source bar:
+```
+Transport Topics   ████░░░░░░░░░░░░░░░░  1.81
+```
+
+### Top Risk Signal Card
+
+After the top 5 signals table, the report shows a card for the highest-scoring article with per-dimension score bars. Each dimension bar runs from 0 to 10:
+
+```
+| Dimension | Score | Bar |
+|-----------|-------|-----|
+| Disruption Risk | 10.0 | ████████████████████ |
+| Business Impact | 1.0 | ██░░░░░░░░░░░░░░░░░░ |
+```
+
+### Mermaid Visualization
+
+GitHub renders Mermaid diagrams natively in Markdown. The pipeline flowchart uses this format. An example severity pie chart (illustrative):
+
+```mermaid
+pie title Severity Distribution (illustrative)
+    "LOW" : 75
+    "MEDIUM" : 20
+    "HIGH" : 5
+```
+
+The pie chart is a static example; the actual weekly report uses ASCII bars for precise values.
+
 ## Example
 
 ```
@@ -56,19 +100,10 @@ Each report includes a timestamp and a reminder to run `python -m opsrisk valida
 Scanned 202 signal(s) from 6 source(s). 0 high-risk, 1 medium-risk,
 201 low-risk signal(s) identified.
 
-## Top Signals
-
-| # | Severity | Signal | Source | Composite |
-|---|----------|--------|--------|-----------|
-| 1 | MEDIUM   | Toyota Suppliers Warn of Parts Shortages Tied to Iran War | Transport Topics | 5.0 |
-
-## Risk Themes
-
-| Theme | Articles Hit | % of Total |
-|-------|-------------|------------|
-| Tariffs & Trade Policy | 16 | 7.9 |
-| Supplier & Parts Risk | 14 | 6.9 |
-| Geopolitical Conflict | 7 | 3.5 |
+Severity distribution:
+  LOW      ████████████████████ 201
+  MEDIUM   ██                   1
+  HIGH     ░░░░░░░░░░░░░░░░░░░░ 0
 ```
 
 ## Implementation
