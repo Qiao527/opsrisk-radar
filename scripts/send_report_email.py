@@ -98,7 +98,7 @@ def main() -> None:
             email_id = result.get("id", "unknown")
             print(f"Email sent: id={email_id}")
     except HTTPError as exc:
-        body = exc.read().decode(errors="replace")[:500]
+        body = exc.read().decode(errors="replace")
         _fail(f"Resend API error {exc.code}: {body}")
     except URLError as exc:
         _fail(f"Network error: {exc.reason}")
