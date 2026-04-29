@@ -35,4 +35,4 @@ enabled = true
 name = "Interact Analysis"
 url = "https://interactanalysis.com/feed/"
 category = "operations"
-enabled = true
+enabled = false
