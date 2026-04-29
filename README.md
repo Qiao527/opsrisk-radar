@@ -24,6 +24,8 @@ OpsRisk Radar automates that triage. It ingests RSS feeds from logistics, procur
                     └────────────┘
 ```
 
+See [`docs/architecture.md`](docs/architecture.md) for a detailed breakdown of each stage.
+
 1. **Fetch** — ingests RSS feeds concurrently from logistics, procurement, and operations sources
 2. **Store** — saves articles to SQLite with deduplication by URL and tracks scoring state
 3. **Score** — evaluates each article across 5 risk dimensions using keyword-based rules, applies calibration penalties, and computes a composite score
@@ -33,7 +35,7 @@ OpsRisk Radar automates that triage. It ingests RSS feeds from logistics, procur
 
 ## Scoring Methodology
 
-Scoring is interpretable and fully rule-based. Each article is evaluated across five dimensions using keyword pattern matching against titles and summaries. A match in the title counts 3x more than a match in the summary.
+Scoring is interpretable and fully rule-based. Each article is evaluated across five dimensions using keyword pattern matching against titles and summaries. A match in the title counts 3x more than a match in the summary. See [`docs/methodology.md`](docs/methodology.md) for the full methodology, including calibration details and limitations.
 
 | Dimension | Weight | What It Measures | Example Keywords |
 |-----------|--------|------------------|------------------|
@@ -99,7 +101,23 @@ python -m opsrisk score    # score unscored articles
 python -m opsrisk brief    # generate today's brief
 ```
 
-The generated brief appears in `briefs/YYYY-MM-DD.md`.
+The generated brief appears in `briefs/YYYY-MM-DD.md`. A sample brief is available at [`briefs/2026-04-28.md`](briefs/2026-04-28.md).
+
+### Validation
+
+Run `scripts/check.sh` to validate the pipeline end-to-end:
+
+```bash
+./scripts/check.sh
+```
+
+The script:
+1. Runs the full pipeline (`fetch` + `score` + `brief`)
+2. Confirms a brief file was generated
+3. Confirms the brief contains the project name
+4. Confirms the SQLite database exists at `data/opsrisk.db`
+
+It exits with a non-zero code on any failure, making it suitable for automated environments.
 
 ### Requirements
 
@@ -112,6 +130,9 @@ The generated brief appears in `briefs/YYYY-MM-DD.md`.
 
 ```
 opsrisk-radar/
+├── docs/                 # Documentation
+│   ├── architecture.md   # Pipeline stages and module responsibilities
+│   └── methodology.md    # Scoring dimensions, weights, calibration
 ├── src/opsrisk/          # Core library
 │   ├── config.py         # TOML config loader
 │   ├── models.py         # Data models (Article, Score, Brief)
