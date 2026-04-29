@@ -18,19 +18,24 @@ OpsRisk Radar automates that triage. It ingests RSS feeds from logistics, procur
 
 ```mermaid
 flowchart LR
-    A[RSS Feeds] --> B[Fetch&lt;br/&gt;feed.py]
-    B --> C[(SQLite&lt;br/&gt;database.py)]
-    C --> D[Score&lt;br/&gt;scorer.py]
-    D --> E[Brief&lt;br/&gt;brief.py]
-    E --> F[briefs/&lt;br/&gt;YYYY-MM-DD.md]
+    A[RSS Feeds] --> B[feed.py]
+    B --> C[(SQLite)]
+    C --> D[scorer.py]
+    D --> E[brief.py]
+    E --> F[briefs/ YYYY-MM-DD.md]
+    C --> G[validate.py]
+    C --> H[weekly.py]
+    H --> I[briefs/weekly/]
 ```
 
 See [`docs/architecture.md`](docs/architecture.md) for a detailed breakdown of each stage.
 
-1. **Fetch** — ingests RSS feeds concurrently from logistics, procurement, and operations sources
-2. **Store** — saves articles to SQLite with deduplication by URL and tracks scoring state
-3. **Score** — evaluates each article across 5 risk dimensions using keyword-based rules, applies calibration penalties, and computes a composite score
-4. **Brief** — assembles top signals into a structured Markdown daily brief
+1. **Fetch** (`feed.py`) — ingests RSS feeds concurrently from logistics, procurement, and operations sources
+2. **Store** (`database.py`) — saves articles to SQLite with deduplication by URL and tracks scoring state
+3. **Score** (`scorer.py`) — evaluates each article across 5 risk dimensions, applies calibration penalties
+4. **Brief** (`brief.py`) — assembles top signals into a structured Markdown daily brief
+5. **Validate** (`validate.py`) — runs integrity checks on the database
+6. **Weekly** (`weekly.py`) — generates a trend report with aggregations and ASCII bar charts
 
 ---
 
@@ -86,23 +91,24 @@ The severity distribution across 202 articles: 201 LOW, 1 MEDIUM, 0 HIGH, 0 CRIT
 ## Quick Start
 
 ```bash
-# Clone and set up
 git clone https://github.com/Qiao527/opsrisk-radar.git && cd opsrisk-radar
 python3 -m venv .venv && source .venv/bin/activate
-
-# Install
 pip install -e .
-
-# Run the full pipeline
-python -m opsrisk run
-
-# Or run individual steps
-python -m opsrisk fetch    # just fetch RSS feeds
-python -m opsrisk score    # score unscored articles
-python -m opsrisk brief    # generate today's brief
 ```
 
-The generated brief appears in `briefs/YYYY-MM-DD.md`. A sample brief is available at [`briefs/2026-04-29.md`](briefs/2026-04-29.md).
+All available commands:
+
+| Command | Action |
+|---------|--------|
+| `opsrisk fetch` | Fetch RSS feeds into the database |
+| `opsrisk score` | Score unscored articles |
+| `opsrisk brief` | Generate today's daily brief |
+| `opsrisk validate` | Run data quality checks on the database |
+| `opsrisk weekly` | Generate a weekly trend report |
+| `opsrisk run` | Run the full pipeline (fetch + score + brief) |
+
+The daily brief appears in `briefs/YYYY-MM-DD.md`. A sample is at [`briefs/2026-04-29.md`](briefs/2026-04-29.md).
+Weekly reports go to `briefs/weekly/YYYY-MM-DD.md`.
 
 ### Validation
 
@@ -209,7 +215,6 @@ opsrisk-radar/
 
 - **Better disruption-oriented sources** — add freight rate indexes, customs bulletins, port authority alerts, and supplier-risk databases
 - **LLM-assisted business implication summaries** — use a language model to write a one-paragraph "why this matters" for top signals, rather than just showing the raw summary
-- **Weekly trend analytics** — track which risk categories are trending up or down over time
 - **Simple dashboard** — lightweight web UI for browsing and filtering scored articles
 
 ---

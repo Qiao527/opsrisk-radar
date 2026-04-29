@@ -24,15 +24,11 @@ echo ""
 echo "--- Step 2: Checking brief file ---"
 TODAY=$(date +%Y-%m-%d)
 BRIEF="briefs/${TODAY}.md"
-FALLBACK="briefs/2026-04-28.md"
 
 if [ -f "$BRIEF" ]; then
     echo "  OK: ${BRIEF} exists"
-elif [ -f "$FALLBACK" ]; then
-    echo "  OK: ${FALLBACK} exists (today's brief not yet generated)"
-    BRIEF="$FALLBACK"
 else
-    echo "  FAIL: no brief file found in briefs/"
+    echo "  FAIL: ${BRIEF} not found — pipeline may not have generated it"
     exit 1
 fi
 

@@ -1,17 +1,19 @@
 # Architecture
 
-OpsRisk Radar is a four-stage ETL pipeline: fetch, store, score, brief. Each stage is a discrete Python module with a single responsibility.
+OpsRisk Radar has six commands built on a shared ETL core: fetch, store, score, brief, validate, and weekly. Each command is backed by a discrete Python module.
 
 ## Pipeline Overview
 
 ```mermaid
-flowchart TD
-    CFG[config/sources.toml] --> F[feed.py<br/>httpx + feedparser]
-    F -->|RSS articles| DB[(database.py<br/>SQLite)]
-    DB -->|unscored articles| S[scorer.py<br/>regex keyword matching]
-    S -->|scored articles| DB
-    DB -->|scored articles| BR[Brief<br/>brief.py<br/>Markdown renderer]
-    BR --> OUT[Briefs<br/>briefs/YYYY-MM-DD.md]
+flowchart LR
+    CFG[config/sources.toml] --> F[feed.py]
+    F --> DB[(SQLite)]
+    DB --> S[scorer.py]
+    S --> BR[brief.py]
+    BR --> OUT[briefs/Y-m-d.md]
+    DB --> V[validate.py]
+    DB --> W[weekly.py]
+    W --> WO[briefs/weekly/]
 ```
 
 ## Stage 1: Configuration
@@ -84,17 +86,49 @@ The scorer is called by `__main__.py`'s `_run_score()` function, which iterates 
 
 `render_markdown()` produces the full Markdown document. `write_brief()` saves it to `briefs/YYYY-MM-DD.md`.
 
+## Stage 6: Validation
+
+**File:** `src/opsrisk/validate.py`
+
+`run_validations(db)` runs 15 integrity checks against the database, grouped into four categories:
+
+1. **Articles** — confirms `url`, `title`, `source_name`, `source_category`, `fetched_at` are never null or empty
+2. **Scores** — confirms `composite_score` and all five dimension scores are within [0, 10], and `scored_at` is never null
+3. **Relationships** — confirms no orphaned score rows and all scored articles have matching scores
+4. **Source concentration** — prints article count by source and warns if any source exceeds 70% dominance
+
+Returns `True` if all checks pass, `False` otherwise. The CLI uses the return code to exit with 0 or 1.
+
+## Stage 7: Weekly Analytics
+
+**File:** `src/opsrisk/weekly.py`
+
+`generate_weekly_report(db, briefs_dir)` queries the last 7 days of scored articles and produces a Markdown trend report under `briefs/weekly/YYYY-MM-DD.md`. The report includes:
+
+1. **Executive summary** with severity distribution bar chart
+2. **Top 5 signals** by composite score
+3. **Top Risk Signal card** with per-dimension score bars
+4. **Average scores by source** with trend bars
+5. **Average disruption risk by source category**
+6. **Source concentration** breakdown
+7. **Risk theme frequency analysis** using keyword pattern matching against article titles
+8. **Data quality note** referencing the validate command
+
+All data comes from the existing `articles` and `scores` tables via SQL aggregation. No scoring logic is invoked during report generation.
+
 ## CLI Entry Point
 
 **File:** `src/opsrisk/__main__.py`
 
-The `opsrisk` CLI exposes four subcommands:
+The `opsrisk` CLI exposes six subcommands:
 
 | Command | Action |
 |---------|--------|
-| `fetch` | Run stage 2 only |
-| `score` | Run stage 4 only |
-| `brief` | Run stage 5 only |
-| `run`  | Fetch -> Score -> Brief (full pipeline) |
+| `fetch` | Ingest RSS feeds |
+| `score` | Score unscored articles |
+| `brief` | Generate daily brief |
+| `validate` | Run data quality checks |
+| `weekly` | Generate weekly trend report |
+| `run` | Fetch -> Score -> Brief (full pipeline) |
 
 Each subcommand loads configuration, instantiates the database, runs its stage, and closes the connection. This design lets each stage be run independently for debugging or incremental operation.

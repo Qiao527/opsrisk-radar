@@ -51,7 +51,7 @@ The weekly report uses two visual enhancements that render in any Markdown viewe
 
 ### ASCII Bar Charts
 
-Horizontal bars using Unicode block characters (`\u2588` filled, `\u2591` light shade) appear in four sections:
+Horizontal bars using Unicode block characters (&#x2588; filled, &#x2591; light shade) appear in four sections:
 
 | Section | Bar represents | Scale |
 |---------|----------------|-------|
