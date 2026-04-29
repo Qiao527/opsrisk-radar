@@ -36,3 +36,33 @@ name = "Interact Analysis"
 url = "https://interactanalysis.com/feed/"
 category = "operations"
 enabled = false
+
+[[feeds]]
+name = "The Loadstar"
+url = "https://theloadstar.com/feed/"
+category = "freight_logistics"
+enabled = true
+
+[[feeds]]
+name = "Journal of Commerce"
+url = "https://www.joc.com/rss.xml"
+category = "port_disruption"
+enabled = true
+
+[[feeds]]
+name = "Manufacturing Dive"
+url = "https://www.manufacturingdive.com/feeds/news/"
+category = "manufacturing_ops"
+enabled = true
+
+[[feeds]]
+name = "Global Trade Magazine"
+url = "https://www.globaltrademag.com/feed/"
+category = "customs_trade"
+enabled = true
+
+[[feeds]]
+name = "Container News"
+url = "https://container-news.com/feed/"
+category = "port_disruption"
+enabled = true
