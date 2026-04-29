@@ -1,5 +1,9 @@
 # OpsRisk Radar
 
+![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg) ![License](https://img.shields.io/badge/license-MIT-green) ![Status](https://img.shields.io/badge/status-v1.3-orange)
+
+**OpsRisk Radar turns scattered supply chain news into ranked operational risk signals.**
+
 **Supply Chain & Operations Risk Intelligence Brief** — an automated pipeline that collects news from logistics, procurement, and operations technology feeds, scores each article for operational risk using rule-based keyword analysis, and generates a daily Markdown brief.
 
 OpsRisk Radar turns scattered industry news into a ranked, actionable signal feed. It answers the question: *out of everything published today, which stories actually matter for supply chain resilience?*
@@ -18,14 +22,11 @@ OpsRisk Radar automates that triage. It ingests RSS feeds from logistics, procur
 
 ```mermaid
 flowchart LR
-    A[RSS Feeds] --> B[feed.py]
-    B --> C[(SQLite)]
-    C --> D[scorer.py]
-    D --> E[brief.py]
-    E --> F[briefs/ YYYY-MM-DD.md]
-    C --> G[validate.py]
-    C --> H[weekly.py]
-    H --> I[briefs/weekly/]
+    A[RSS Feeds] --> B[(SQLite)]
+    B --> C[Risk Scoring]
+    C --> D[Daily Brief]
+    C --> E[Weekly Report]
+    B --> F[Validation]
 ```
 
 See [`docs/architecture.md`](docs/architecture.md) for a detailed breakdown of each stage.
@@ -37,54 +38,19 @@ See [`docs/architecture.md`](docs/architecture.md) for a detailed breakdown of e
 5. **Validate** (`validate.py`) — runs integrity checks on the database
 6. **Weekly** (`weekly.py`) — generates a trend report with aggregations and ASCII bar charts
 
----
+### Sample Output
 
-## Scoring Methodology
+After a successful run, the brief's top signal is a ranked MEDIUM-severity story:
 
-Scoring is interpretable and fully rule-based. Each article is evaluated across five dimensions using keyword pattern matching against titles and summaries. A match in the title counts 3x more than a match in the summary. See [`docs/methodology.md`](docs/methodology.md) for the full methodology, including calibration details and limitations.
+```
+| # | Severity | Signal                                                  | Source            |
+|---|----------|---------------------------------------------------------|-------------------|
+| 1 | MEDIUM   | Toyota Suppliers Warn of Parts Shortages Tied to Iran War | Transport Topics |
 
-| Dimension | Weight | What It Measures | Example Keywords |
-|-----------|--------|------------------|------------------|
-| Disruption Risk | 45% | Likelihood of operational disruption | shortage, strike, war, port congestion, factory shutdown, recall, sanctions, shipping delay |
-| Business Impact | 25% | Financial magnitude | Dollar amounts, revenue, profit, loss, tariff, bankruptcy, inflation |
-| Actionability | 15% | Regulatory or deadline-driven urgency | compliance, deadline, ban, sanctions, audit, executive order |
-| Signal Strength | 10% | Specificity and authority | named entities (China, US, EU), percentages, dollar figures |
-| Strategic Relevance | 5% | Long-term alignment | reshoring, automation, sustainability, ESG, supply chain resilience |
+Score breakdown: D10 B1 S1 A1 Sig1 | Composite: 5.0/10
+```
 
-The composite score is a weighted average on a 1-10 scale. Severity thresholds:
-- **CRITICAL** >= 9.0
-- **HIGH** >= 7.0
-- **MEDIUM** >= 4.0
-- **LOW** < 4.0
-
-### Calibration: A Concrete Example
-
-Early pipeline runs revealed a calibration problem — market-size forecasts dominated the rankings because their dollar figures inflated `Business Impact` scores.
-
-**Before calibration**, the #1 article was:
-> *"Industrial robot component revenues to exceed $9.3 billion by 2025"*
-> Composite: 3.9 / Disruption Risk: 1.0
-
-This is a market projection, not an operational risk. Meanwhile, a genuinely disruptive story was buried:
-
-> *"Toyota Suppliers Warn of Parts Shortages Tied to Iran War"*
-> Composite: 1.6 / Disruption Risk: 3.0
-
-The fix involved three changes while keeping scoring fully rule-based:
-
-1. **Added ~25 missing disruption keywords** — `war`, `conflict`, `parts shortage`, `shipping delay`, `labor dispute`, `factory shutdown`, `recall`, `rerouting`, `tariff shock`, and more
-2. **Added market-report detection** — articles matching forward-projection language ("CAGR", "market worth", "revenue to exceed", "soar to $X billion") have their `Business Impact` de-weighted by 70%
-3. **Applied source-level penalty** — Interact Analysis contributes 60% of articles, nearly all long-term market research; their `Business Impact` receives a 40% reduction
-
-**After calibration:**
-
-> *"Toyota Suppliers Warn of Parts Shortages Tied to Iran War"*
-> Composite: **5.05** / Disruption Risk: **10.0** — ranks #1 (MEDIUM)
-
-> *"Industrial robot component revenues to exceed $9.3 billion"*
-> Composite: **1.68** — dropped from #1 to #78 (LOW)
-
-The severity distribution across 202 articles: 201 LOW, 1 MEDIUM, 0 HIGH, 0 CRITICAL. The calibration raised genuinely disruptive signals without inflating everything.
+The full daily brief with all scored articles and per-dimension breakdowns is written to `briefs/YYYY-MM-DD.md`.
 
 ---
 
@@ -94,6 +60,14 @@ The severity distribution across 202 articles: 201 LOW, 1 MEDIUM, 0 HIGH, 0 CRIT
 git clone https://github.com/Qiao527/opsrisk-radar.git && cd opsrisk-radar
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e .
+```
+
+Run the pipeline or individual stages:
+
+```bash
+python -m opsrisk run        # Full pipeline: fetch + score + brief
+python -m opsrisk validate   # Data quality checks
+python -m opsrisk weekly     # Weekly trend report
 ```
 
 All available commands:
@@ -153,20 +127,6 @@ python -m opsrisk weekly
 
 The report includes the top 5 signals of the week, average scores by source and category, source concentration, and a risk theme frequency analysis. See [`docs/weekly_analytics.md`](docs/weekly_analytics.md) for full details.
 
-### Sample Output
-
-After a successful run, the brief's top signal is a ranked MEDIUM-severity story:
-
-```
-| # | Severity | Signal                                                  | Source            |
-|---|----------|---------------------------------------------------------|-------------------|
-| 1 | MEDIUM   | Toyota Suppliers Warn of Parts Shortages Tied to Iran War | Transport Topics |
-
-Score breakdown: D10 B1 S1 A1 Sig1 | Composite: 5.0/10
-```
-
-The full daily brief with all scored articles and per-dimension breakdowns is written to `briefs/YYYY-MM-DD.md`.
-
 ### Requirements
 
 - Python 3.11+ (uses `tomllib` from stdlib)
@@ -203,6 +163,58 @@ opsrisk-radar/
 
 ---
 
+## Scoring Methodology
+
+Scoring is interpretable and fully rule-based. Each article is evaluated across five dimensions using keyword pattern matching against titles and summaries. A match in the title counts 3x more than a match in the summary. See [`docs/methodology.md`](docs/methodology.md) for the full methodology, including calibration details and limitations.
+
+| Dimension | Weight | What It Measures | Example Keywords |
+|-----------|--------|------------------|------------------|
+| Disruption Risk | 45% | Likelihood of operational disruption | shortage, strike, war, port congestion, factory shutdown, recall, sanctions, shipping delay |
+| Business Impact | 25% | Financial magnitude | Dollar amounts, revenue, profit, loss, tariff, bankruptcy, inflation |
+| Actionability | 15% | Regulatory or deadline-driven urgency | compliance, deadline, ban, sanctions, audit, executive order |
+| Signal Strength | 10% | Specificity and authority | named entities (China, US, EU), percentages, dollar figures |
+| Strategic Relevance | 5% | Long-term alignment | reshoring, automation, sustainability, ESG, supply chain resilience |
+
+The composite score is a weighted average on a 1-10 scale. Severity thresholds:
+- **CRITICAL** >= 9.0
+- **HIGH** >= 7.0
+- **MEDIUM** >= 4.0
+- **LOW** < 4.0
+
+<details>
+<summary>Calibration: A Concrete Example</summary>
+
+Early pipeline runs revealed a calibration problem — market-size forecasts dominated the rankings because their dollar figures inflated `Business Impact` scores.
+
+**Before calibration**, the #1 article was:
+> *"Industrial robot component revenues to exceed $9.3 billion by 2025"*
+> Composite: 3.9 / Disruption Risk: 1.0
+
+This is a market projection, not an operational risk. Meanwhile, a genuinely disruptive story was buried:
+
+> *"Toyota Suppliers Warn of Parts Shortages Tied to Iran War"*
+> Composite: 1.6 / Disruption Risk: 3.0
+
+The fix involved three changes while keeping scoring fully rule-based:
+
+1. **Added ~25 missing disruption keywords** — `war`, `conflict`, `parts shortage`, `shipping delay`, `labor dispute`, `factory shutdown`, `recall`, `rerouting`, `tariff shock`, and more
+2. **Added market-report detection** — articles matching forward-projection language ("CAGR", "market worth", "revenue to exceed", "soar to $X billion") have their `Business Impact` de-weighted by 70%
+3. **Applied source-level penalty** — Interact Analysis contributes 60% of articles, nearly all long-term market research; their `Business Impact` receives a 40% reduction
+
+**After calibration:**
+
+> *"Toyota Suppliers Warn of Parts Shortages Tied to Iran War"*
+> Composite: **5.05** / Disruption Risk: **10.0** — ranks #1 (MEDIUM)
+
+> *"Industrial robot component revenues to exceed $9.3 billion"*
+> Composite: **1.68** — dropped from #1 to #78 (LOW)
+
+The severity distribution across 202 articles: 201 LOW, 1 MEDIUM, 0 HIGH, 0 CRITICAL. The calibration raised genuinely disruptive signals without inflating everything.
+
+</details>
+
+---
+
 ## Current Limitations
 
 - **RSS source quality varies** — the pipeline is only as good as its feeds. A feed full of press releases and market forecasts dilutes the signal. Adding better disruption-oriented sources is an ongoing task.
@@ -213,9 +225,9 @@ opsrisk-radar/
 
 ## Roadmap
 
-- **Better disruption-oriented sources** — add freight rate indexes, customs bulletins, port authority alerts, and supplier-risk databases
 - **LLM-assisted business implication summaries** — use a language model to write a one-paragraph "why this matters" for top signals, rather than just showing the raw summary
 - **Simple dashboard** — lightweight web UI for browsing and filtering scored articles
+- **Better disruption-oriented sources** — add freight rate indexes, customs bulletins, port authority alerts, and supplier-risk databases
 
 ---
 
