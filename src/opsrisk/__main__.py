@@ -14,6 +14,7 @@ from opsrisk.brief import generate_brief, render_markdown, write_brief
 from opsrisk.validate import run_validations
 from opsrisk.weekly import generate_weekly_report
 from opsrisk.html_report import generate_daily_html, generate_weekly_html
+from opsrisk.source_audit import audit_sources, print_audit
 
 
 def _run_fetch(db: Database, sources) -> None:
@@ -158,6 +159,15 @@ def _cmd_html(args) -> None:
         db.close()
 
 
+def _cmd_source_audit(args) -> None:
+    db = Database(args.db or "data/opsrisk.db")
+    try:
+        reports = audit_sources(db)
+        print_audit(reports)
+    finally:
+        db.close()
+
+
 def _cmd_run(args) -> None:
     cfg = load_config()
     db = Database(args.db or "data/opsrisk.db")
@@ -214,6 +224,9 @@ def main(argv: list[str] | None = None) -> int:
 
     p_html = sub.add_parser("html", help="Generate HTML reports (daily + weekly)")
     p_html.set_defaults(func=_cmd_html)
+
+    p_audit = sub.add_parser("source-audit", help="Audit source quality metrics")
+    p_audit.set_defaults(func=_cmd_source_audit)
 
     p_run = sub.add_parser("run", help="Fetch \u2192 Score \u2192 Brief (full pipeline)")
     p_run.set_defaults(func=_cmd_run)

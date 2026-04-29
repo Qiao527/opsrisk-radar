@@ -69,6 +69,7 @@ python -m opsrisk run        # Full pipeline: fetch + score + brief
 python -m opsrisk validate   # Data quality checks
 python -m opsrisk weekly     # Weekly trend report
 python -m opsrisk html       # HTML reports (daily + weekly)
+python -m opsrisk source-audit  # Source quality audit
 ```
 
 All available commands:
@@ -81,6 +82,7 @@ All available commands:
 | `opsrisk validate` | Run data quality checks on the database |
 | `opsrisk weekly` | Generate a weekly trend report |
 | `opsrisk html` | Generate HTML reports (daily + weekly) |
+| `opsrisk source-audit` | Audit source quality and signal metrics |
 | `opsrisk run` | Run the full pipeline (fetch + score + brief) |
 
 The daily brief appears in `briefs/YYYY-MM-DD.md`. A sample is at [`briefs/2026-04-29.md`](briefs/2026-04-29.md).
