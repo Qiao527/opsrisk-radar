@@ -119,6 +119,23 @@ The script:
 
 It exits with a non-zero code on any failure, making it suitable for automated environments.
 
+### Data Quality
+
+Run `python -m opsrisk validate` to check database integrity after the pipeline completes:
+
+```bash
+python -m opsrisk validate
+```
+
+The command runs four groups of checks and exits with code 1 on any failure:
+
+1. **Articles** — confirms `url`, `title`, `source_name`, `source_category`, and `fetched_at` are never null or empty
+2. **Scores** — confirms `composite_score` and all five dimension scores are within [0, 10], and `scored_at` is never null
+3. **Relationships** — confirms no orphaned score rows and all scored articles have matching scores
+4. **Source concentration** — prints article count by source and warns if any source exceeds 70% dominance
+
+See [`docs/data_quality.md`](docs/data_quality.md) for a full description of each check.
+
 ### Sample Output
 
 After a successful run, the brief's top signal is a ranked MEDIUM-severity story:

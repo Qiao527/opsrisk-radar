@@ -16,6 +16,11 @@ python -m opsrisk run
 echo ""
 
 # 2. Verify the brief file exists
+# 1.5: Validate database integrity
+echo "--- Step 1.5: Validating database ---"
+python -m opsrisk validate
+echo ""
+
 echo "--- Step 2: Checking brief file ---"
 TODAY=$(date +%Y-%m-%d)
 BRIEF="briefs/${TODAY}.md"

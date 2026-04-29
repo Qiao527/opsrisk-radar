@@ -11,6 +11,7 @@ from opsrisk.database import Database
 from opsrisk.feed import fetch_all_feeds
 from opsrisk.scorer import make_article_score
 from opsrisk.brief import generate_brief, render_markdown, write_brief
+from opsrisk.validate import run_validations
 
 
 def _run_fetch(db: Database, sources) -> None:
@@ -104,6 +105,16 @@ def _cmd_brief(args) -> None:
         db.close()
 
 
+def _cmd_validate(args) -> None:
+    cfg = load_config()
+    db = Database(args.db or "data/opsrisk.db")
+    try:
+        ok = run_validations(db)
+        sys.exit(0 if ok else 1)
+    finally:
+        db.close()
+
+
 def _cmd_run(args) -> None:
     cfg = load_config()
     db = Database(args.db or "data/opsrisk.db")
@@ -152,7 +163,10 @@ def main(argv: list[str] | None = None) -> int:
     p_brief = sub.add_parser("brief", help="Generate today's brief")
     p_brief.set_defaults(func=_cmd_brief)
 
-    p_run = sub.add_parser("run", help="Fetch → Score → Brief (full pipeline)")
+    p_val = sub.add_parser("validate", help="Run data quality checks on database")
+    p_val.set_defaults(func=_cmd_validate)
+
+    p_run = sub.add_parser("run", help="Fetch \u2192 Score \u2192 Brief (full pipeline)")
     p_run.set_defaults(func=_cmd_run)
 
     args = parser.parse_args(argv)
