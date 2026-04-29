@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OpsRisk Radar — Daily Brief 2026-04-29</title>
+<style>
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, sans-serif;
+  background: #f0f2f5;
+  color: #1a1a2e;
+  line-height: 1.5;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Header */
+
+.header {
+  background: #1a1a2e;
+  color: #fff;
+  padding: 28px 32px;
+  border-radius: 10px;
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.header .subtitle {
+  color: #a0a0b8;
+  font-size: 14px;
+}
+
+.header .ts {
+  color: #6c6c88;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+/* Summary cards row */
+
+.summary-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.summary-card {
+  flex: 1;
+  min-width: 120px;
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.summary-card .count {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.summary-card .lbl {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.summary-card.card-critical .count { color: #7b1a1a; }
+.summary-card.card-high .count { color: #c62828; }
+.summary-card.card-medium .count { color: #e65100; }
+.summary-card.card-low .count { color: #388e3c; }
+.summary-card.card-total { background: #1a1a2e; color: #fff; }
+.summary-card.card-total .count { color: #fff; }
+.summary-card.card-total .lbl { color: #a0a0b8; }
+
+/* Sections */
+
+.section {
+  margin-bottom: 28px;
+}
+
+.section h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #e0e0e8;
+  color: #1a1a2e;
+}
+
+/* Tables */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  font-size: 14px;
+}
+
+th {
+  background: #1a1a2e;
+  color: #fff;
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #eee;
+  vertical-align: middle;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:nth-child(even) {
+  background: #f8f9fc;
+}
+
+/* Severity badges */
+
+.badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.badge-critical { background: #7b1a1a; color: #fff; }
+.badge-high     { background: #c62828; color: #fff; }
+.badge-medium   { background: #e65100; color: #fff; }
+.badge-low      { background: #546e7a; color: #fff; }
+
+/* Title cells with ellipsis */
+
+.cell-title {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-title a {
+  color: #1a1a2e;
+  text-decoration: none;
+}
+
+.cell-title a:hover {
+  text-decoration: underline;
+}
+
+/* Article cards (daily detailed view) */
+
+.article-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.article-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.article-card h3 a {
+  color: #1a1a2e;
+  text-decoration: none;
+}
+
+.article-card h3 a:hover {
+  text-decoration: underline;
+}
+
+.article-meta {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+.article-summary {
+  font-size: 13px;
+  color: #444;
+  margin-bottom: 10px;
+  line-height: 1.55;
+}
+
+/* Score bars */
+
+.score-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+  font-size: 12px;
+}
+
+.score-lbl {
+  width: 120px;
+  text-align: right;
+  font-weight: 600;
+  color: #555;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.score-track {
+  flex: 1;
+  height: 14px;
+  background: #eee;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.score-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.score-fill-critical { background: #7b1a1a; }
+.score-fill-high     { background: #c62828; }
+.score-fill-medium   { background: #e65100; }
+.score-fill-low      { background: #388e3c; }
+
+.score-num {
+  width: 28px;
+  text-align: right;
+  font-weight: 600;
+  font-size: 11px;
+  color: #555;
+  flex-shrink: 0;
+}
+
+/* Theme/trend bars (weekly) */
+
+.theme-bar-wrap {
+  display: inline-block;
+  width: 100px;
+  height: 14px;
+  background: #eee;
+  border-radius: 3px;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.theme-bar {
+  height: 100%;
+  background: #3949ab;
+  border-radius: 3px;
+}
+
+/* Footer */
+
+.footer {
+  text-align: center;
+  font-size: 12px;
+  color: #888;
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid #e0e0e8;
+}
+
+/* Mobile responsive */
+
+@media (max-width: 600px) {
+  .summary-row {
+    flex-direction: column;
+  }
+  .summary-card {
+    min-width: auto;
+  }
+  .container {
+    padding: 10px;
+  }
+  .header {
+    padding: 20px;
+  }
+  .score-lbl {
+    width: 80px;
+  }
+  th, td {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+  .cell-title {
+    max-width: 160px;
+  }
+}
+
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header"><h1>OpsRisk Radar &mdash; Daily Brief</h1><div class="subtitle">2026-04-29</div><div class="ts">Generated at 2026-04-29T21:53:06.124549+00:00</div></div><div class="summary-row"><div class="summary-card card-critical"><div class="count">0</div><div class="lbl">Critical / High</div></div><div class="summary-card card-medium"><div class="count">1</div><div class="lbl">Medium</div></div><div class="summary-card card-low"><div class="count">24</div><div class="lbl">Low</div></div><div class="summary-card card-total"><div class="count">25</div><div class="lbl">Total Signals</div></div></div><div class="section"><h2>Top Signals</h2><table><thead><tr><th>#</th><th>Severity</th><th>Signal</th><th>Source</th><th>Score</th></tr></thead><tbody><tr><td>1</td><td><span class="badge badge-medium">MEDIUM</span></td><td class="cell-title"><a href="https://www.ttnews.com/articles/toyota-supply-chain-iran-war">Toyota Suppliers Warn of Parts Shortages Tied to Iran War</a></td><td>Transport Topics</td><td><strong>5.0</strong></td></tr><tr><td>2</td><td><span class="badge badge-low">LOW</span></td><td class="cell-title"><a href="https://www.ttnews.com/articles/amazon-earnings-q1-2026">Amazon Profit Climbs to $30 Billion in First Quarter</a></td><td>Transport Topics</td><td><strong>3.5</strong></td></tr><tr><td>3</td><td><span class="badge badge-low">LOW</span></td><td class="cell-title"><a href="https://www.pymnts.com/supply-chain/2026/grubmarket-hits-4-5-billion-valuation-as-ai-optimizes-food-supply-chain/">GrubMarket Hits $4.5 Billion Valuation as AI Optimizes Food Supply Chain</a></td><td>PYMNTS Supply Chain</td><td><strong>3.2</strong></td></tr><tr><td>4</td><td><span class="badge badge-low">LOW</span></td><td class="cell-title"><a href="https://www.supplychaindive.com/news/gm-forecasts-500m-tariff-refund-plans-further-mitigation-efforts/818752/">GM forecasts $500M tariff refund, plans further mitigation efforts</a></td><td>Supply Chain Dive</td><td><strong>3.1</strong></td></tr><tr><td>5</td><td><span class="badge badge-low">LOW</span></td><td class="cell-title"><a href="https://www.ttnews.com/articles/gm-earnings-q1-2026">GM Boosts Outlook by $500 Million</a></td><td>Transport Topics</td><td><strong>3.0</strong></td></tr></tbody></table></div><div class="section"><h2>Detailed Analysis</h2><div class="article-card"><h3><a href="https://www.ttnews.com/articles/toyota-supply-chain-iran-war">Toyota Suppliers Warn of Parts Shortages Tied to Iran War</a></h3><div class="article-meta">Transport Topics (logistics) &mdash; 2026-04-29 &mdash; <span class="badge badge-medium">MEDIUM</span></div><div class="article-summary">Supply chain disruptions stemming from the Iran war are starting to create choke points across Japan, including the network of companies surrounding Toyota.</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:50%"></div></div><span class="score-num">5.0</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-critical" style="width:100%"></div></div><span class="score-num">10.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div></div><div class="article-card"><h3><a href="https://www.ttnews.com/articles/amazon-earnings-q1-2026">Amazon Profit Climbs to $30 Billion in First Quarter</a></h3><div class="article-meta">Transport Topics (logistics) &mdash; 2026-04-30 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">Amazon on April 29 reported a strong increase in profit and net sales during the first quarter, helped by surging growth in its prominent cloud computing unit.</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:35%"></div></div><span class="score-num">3.5</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-critical" style="width:90%"></div></div><span class="score-num">9.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:60%"></div></div><span class="score-num">6.0</span></div></div><div class="article-card"><h3><a href="https://www.pymnts.com/supply-chain/2026/grubmarket-hits-4-5-billion-valuation-as-ai-optimizes-food-supply-chain/">GrubMarket Hits $4.5 Billion Valuation as AI Optimizes Food Supply Chain</a></h3><div class="article-meta">PYMNTS Supply Chain (logistics) &mdash; 2026-02-06 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">GrubMarket raised $50 million in a Series H funding round to extend the reach of its platform for the American food supply chain industry. The company does business in 70 countries around the world and aims to expand further, it said in a Monday (Feb. 2) press release. During 2025, GrubMarket launch</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:32%"></div></div><span class="score-num">3.2</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-high" style="width:70%"></div></div><span class="score-num">7.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-high" style="width:70%"></div></div><span class="score-num">7.0</span></div></div><div class="article-card"><h3><a href="https://www.supplychaindive.com/news/gm-forecasts-500m-tariff-refund-plans-further-mitigation-efforts/818752/">GM forecasts $500M tariff refund, plans further mitigation efforts</a></h3><div class="article-meta">Supply Chain Dive (logistics) &mdash; 2026-04-29 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">The automaker still projects up to $3.5 billion in duty costs in 2026, primarily driven by Section 232 levies, including those on steel and aluminum.</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:31%"></div></div><span class="score-num">3.1</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-high" style="width:70%"></div></div><span class="score-num">7.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:40%"></div></div><span class="score-num">4.0</span></div></div><div class="article-card"><h3><a href="https://www.ttnews.com/articles/gm-earnings-q1-2026">GM Boosts Outlook by $500 Million</a></h3><div class="article-meta">Transport Topics (logistics) &mdash; 2026-04-28 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">Sales of GM’s Chevrolet Silverado and GMC Sierra pickups, its largest profit generators, remained strong despite gas prices surging above $4 a gallon.</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-high" style="width:70%"></div></div><span class="score-num">7.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:60%"></div></div><span class="score-num">6.0</span></div></div><div class="article-card"><h3><a href="https://www.ttnews.com/articles/bp-earnings-q1-2026">BP&#x27;s Profit More Than Doubles in Q1 as US Gas Prices Rise</a></h3><div class="article-meta">Transport Topics (logistics) &mdash; 2026-04-28 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">BP earned $3.84 billion for the quarter. A year earlier the London-based oil and gas company earned $687 million.</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:28%"></div></div><span class="score-num">2.8</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:60%"></div></div><span class="score-num">6.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:60%"></div></div><span class="score-num">6.0</span></div></div><div class="article-card"><h3><a href="https://www.ttnews.com/articles/cbo-tariff-policies-deficit">CBO: Tariff Policy Shifts Could Add $1.1 Trillion to Deficit</a></h3><div class="article-meta">Transport Topics (logistics) &mdash; 2026-04-28 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">The CBO says shifts in U.S. tariff policy may add $1.1 trillion to federal budget deficits over a 10-year period, though exact calculations aren’t yet possible.</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:28%"></div></div><span class="score-num">2.8</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:60%"></div></div><span class="score-num">6.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div></div><div class="article-card"><h3><a href="https://www.thescxchange.com/move/store/honeywell-to-sell-off-its-mobile-computers-barcode-scanners-division-for-1-4-billion">Honeywell to sell off its mobile computers &amp; barcode scanners division for $1.4 billion</a></h3><div class="article-meta">SupplyChainQuarterly (operations) &mdash; 2026-04-20 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">Supply chain tech vendor Honeywell will sell off its division that sells mobile computers, barcode scanners, and printing solutions for the warehouse and logistics market for $1.4 billion to Brady Corp., a manufacturer of portable label printers and other industrial supplies. Selling that Productivi</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:28%"></div></div><span class="score-num">2.8</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:60%"></div></div><span class="score-num">6.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:60%"></div></div><span class="score-num">6.0</span></div></div><div class="article-card"><h3><a href="https://www.thescxchange.com/finance-strategy/survey-smbs-have-built-tariff-toolkits-to-cope-with-disruption">Survey: SMBs have built “tariff toolkits” to cope with disruption</a></h3><div class="article-meta">SupplyChainQuarterly (operations) &mdash; 2026-04-24 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">American businesses have been rocked in the past year by White House tariff policies demanding they pay steep fees for imported goods and raw materials, and now a survey shows how they have adapted—82% of small and medium-sized businesses (SMBs) pass those costs on to customers, and many have also c</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:27%"></div></div><span class="score-num">2.7</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div></div><div class="article-card"><h3><a href="https://www.ttnews.com/articles/tariff-refund-entries-denied">US Says 15% of Tariff Refund Entries Denied So Far</a></h3><div class="article-meta">Transport Topics (logistics) &mdash; 2026-04-28 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">Businesses and individuals paid the contested tariffs on approximately 53 million entries, according to information shared earlier by the government.</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:26%"></div></div><span class="score-num">2.6</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:40%"></div></div><span class="score-num">4.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-high" style="width:70%"></div></div><span class="score-num">7.0</span></div></div><div class="article-card"><h3><a href="https://www.ttnews.com/articles/werner-earnings-q1-2026">Werner Posts 14% Increase in Revenue, Narrows Net Loss in Q1</a></h3><div class="article-meta">Transport Topics (logistics) &mdash; 2026-04-29 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">Werner Enterprises said its Q1 results reflected gains from strategic efforts to reposition operations, resulting in higher revenue and a narrowed net loss.</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:25%"></div></div><span class="score-num">2.5</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:60%"></div></div><span class="score-num">6.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div></div><div class="article-card"><h3><a href="https://www.supplychaindive.com/news/iran-war-slows-growth-services-manufacturing-sp-global-inflation-unemployment/818450/">Iran war slows growth in services, manufacturing: S&amp;P Global</a></h3><div class="article-meta">Supply Chain Dive (logistics) &mdash; 2026-04-27 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">Worries about war-induced inflation, supply bottlenecks, the cost of living and government policy have eroded sentiments among services companies, S&amp;amp;P Global said.</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:24%"></div></div><span class="score-num">2.4</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:40%"></div></div><span class="score-num">4.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div></div><div class="article-card"><h3><a href="https://www.ttnews.com/articles/oil-highest-since-june-2022">Oil Jumps to Highest Level Since June 2022 as War Continues</a></h3><div class="article-meta">Transport Topics (logistics) &mdash; 2026-04-30 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">Oil surged to the highest since June 2022, with no end in sight to the U.S.-Iran conflict or choked-off energy flows through the Strait of Hormuz.</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:24%"></div></div><span class="score-num">2.4</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:40%"></div></div><span class="score-num">4.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div></div><div class="article-card"><h3><a href="https://www.ttnews.com/articles/hormuz-oil-legal-disputes">Hormuz Oil Disruptions Trigger Web of Legal Disputes</a></h3><div class="article-meta">Transport Topics (logistics) &mdash; 2026-04-29 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">The oil industry is wrangling over who should be liable for contracted shipments that weren’t delivered as a result of the Iran war.</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:24%"></div></div><span class="score-num">2.4</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:40%"></div></div><span class="score-num">4.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div></div><div class="article-card"><h3><a href="https://www.pymnts.com/supply-chain/2026/trade-finance-faces-stress-test-as-global-risks-rise/">Trade Disruptions Tie Up Cash and Test CFO Playbooks</a></h3><div class="article-meta">PYMNTS Supply Chain (logistics) &mdash; 2026-03-16 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">The war in Iran is increasingly giving the freight sector a fright. As of Monday (March 16), the geopolitical risks of the Middle East engagement have already reshaped global trade patterns around air freight and shipping, directly impacting energy supply chains as well as other critical high-value </div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:24%"></div></div><span class="score-num">2.4</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:40%"></div></div><span class="score-num">4.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div></div><div class="article-card"><h3><a href="https://www.ttnews.com/articles/landstar-earnings-q1-2026">Landstar Revenue Rises as AI, Geopolitics Shape Quarter</a></h3><div class="article-meta">Transport Topics (logistics) &mdash; 2026-04-29 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">The Jacksonville, Fla.-based motor carrier posted net income of $39.4 million, or $1.16 a diluted share, for the three months ending March 31.</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:22%"></div></div><span class="score-num">2.2</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:50%"></div></div><span class="score-num">5.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-low" style="width:20%"></div></div><span class="score-num">2.0</span></div></div><div class="article-card"><h3><a href="https://interactanalysis.com/high-efficiency-motors-market-to-top-3-billion/">High-efficiency motors market to top $3 billion in 2030</a></h3><div class="article-meta">Interact Analysis (operations) &mdash; 2026-02-23 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">Continued growth is anticipated in the high-efficiency motor market, with the market rising from $1.6 billion in 2024 to $3.1 billion in 2030. The post High-efficiency motors market to top $3 billion in 2030 appeared first on Interact Analysis .</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:22%"></div></div><span class="score-num">2.1</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-low" style="width:36%"></div></div><span class="score-num">3.6</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:60%"></div></div><span class="score-num">6.0</span></div></div><div class="article-card"><h3><a href="https://www.ttnews.com/articles/airlines-seek-25b-aid-trump">Value Airlines Seek $2.5B in Fuel Aid From Trump White House</a></h3><div class="article-meta">Transport Topics (logistics) &mdash; 2026-04-28 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">Budget airlines are seeking $2.5 billion from the Trump administration to offset rising fuel prices, offering warrants allowing the U.S. to buy equity stakes.</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:20%"></div></div><span class="score-num">2.0</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:40%"></div></div><span class="score-num">4.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:40%"></div></div><span class="score-num">4.0</span></div></div><div class="article-card"><h3><a href="https://www.ttnews.com/articles/ny-sues-usdot-withdrawn-funds">New York Sues USDOT Over $73.5M in Withdrawn Federal Funds</a></h3><div class="article-meta">Transport Topics (logistics) &mdash; 2026-04-28 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">New York is suing USDOT, saying it lacks the authority to withhold $73.5 million in funding over what DOT said were noncompliance issues with state-issued CDLs.</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:20%"></div></div><span class="score-num">2.0</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:40%"></div></div><span class="score-num">4.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:40%"></div></div><span class="score-num">4.0</span></div></div><div class="article-card"><h3><a href="https://www.pymnts.com/supply-chain/2026/flexport-debuts-ai-tool-to-streamline-tariff-refunds/">Flexport Debuts AI Tool to Streamline Tariff Refunds</a></h3><div class="article-meta">PYMNTS Supply Chain (logistics) &mdash; 2026-02-27 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">It’s not quite clear when and if American businesses will receive refunds on tariff payments. But assuming they go through, supply chain management firm Flexport said Thursday (Feb. 26) it has its customers covered with a new fleet of artificial intelligence (AI) agents. These agents are designed to</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:20%"></div></div><span class="score-num">2.0</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-medium" style="width:40%"></div></div><span class="score-num">4.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div></div><div class="article-card"><h3><a href="https://www.ttnews.com/articles/oil-prices-upswing-iran-war">Oil Prices on Upswing as Iran War Drags On</a></h3><div class="article-meta">Transport Topics (logistics) &mdash; 2026-04-28 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">Brent crude to be delivered in July, which is where more of the trading is happening in the oil market, rose 2.7% to $104.40 on April 28.</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:20%"></div></div><span class="score-num">2.0</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-low" style="width:20%"></div></div><span class="score-num">2.0</span></div></div><div class="article-card"><h3><a href="https://www.thescxchange.com/tech-infrastructure/technology/ai-continues-to-drive-major-disruptions-in-supply-chain-field-according-to-mhis-annual-industry-report">AI continues to drive major disruptions in supply chain field, according to MHI’s Annual Industry Report</a></h3><div class="article-meta">SupplyChainQuarterly (operations) &mdash; 2026-04-16 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">Artificial intelligence (AI) is rewiring the way the supply chain operates, according to The 2026 MHI Annual Industry Report. Based on a survey of 500 supply chain professionals, the report found that 70% of respondents believe that AI has the potential to disrupt the industry. Titled “Rewiring the </div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:20%"></div></div><span class="score-num">2.0</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div></div><div class="article-card"><h3><a href="https://www.ttnews.com/articles/strait-hormuz-third-month">Strait of Hormuz Nears Third Month of Closure</a></h3><div class="article-meta">Transport Topics (logistics) &mdash; 2026-04-29 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">A Japan-linked oil tanker completed a rare transit of the Strait of Hormuz, as the effective closure of the waterway enters its third month.</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:19%"></div></div><span class="score-num">1.9</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div></div><div class="article-card"><h3><a href="https://interactanalysis.com/the-post-covid-industrial-landscape-slow-recovery-predicted-semiconductor-crash-to-follow-the-shortage/">The post-COVID industrial landscape: slow recovery predicted; semiconductor crash to follow the shortage</a></h3><div class="article-meta">Interact Analysis (operations) &mdash; 2021-06-03 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">Market intelligence company Interact Analysis has just published the latest quarterly update of its Manufacturing Industry Output Tracker (MIO). The report announces the inclusion of… The post The post-COVID industrial landscape: slow recovery predicted; semiconductor crash to follow the shortage ap</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:19%"></div></div><span class="score-num">1.9</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div></div><div class="article-card"><h3><a href="https://interactanalysis.com/off-highway-electronics-market-revenue-forecast-to-exceed-7bn/">Off-highway electronics market revenue forecast to exceed $7bn by 2030 as global demand for components grows</a></h3><div class="article-meta">Interact Analysis (operations) &mdash; 2025-08-28 &mdash; <span class="badge badge-low">LOW</span></div><div class="article-summary">The post Off-highway electronics market revenue forecast to exceed $7bn by 2030 as global demand for components grows appeared first on Interact Analysis .</div><div class="score-row"><span class="score-lbl">Composite</span><div class="score-track"><div class="score-fill score-fill-low" style="width:18%"></div></div><span class="score-num">1.9</span></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-low" style="width:36%"></div></div><span class="score-num">3.6</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-low" style="width:30%"></div></div><span class="score-num">3.0</span></div></div></div>
+<div class="footer">Generated at 2026-04-29T21:53:06.124554+00:00 by OpsRisk Radar</div>
+</div>
+</body>
+</html>

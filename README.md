@@ -68,6 +68,7 @@ Run the pipeline or individual stages:
 python -m opsrisk run        # Full pipeline: fetch + score + brief
 python -m opsrisk validate   # Data quality checks
 python -m opsrisk weekly     # Weekly trend report
+python -m opsrisk html       # HTML reports (daily + weekly)
 ```
 
 All available commands:
@@ -79,10 +80,12 @@ All available commands:
 | `opsrisk brief` | Generate today's daily brief |
 | `opsrisk validate` | Run data quality checks on the database |
 | `opsrisk weekly` | Generate a weekly trend report |
+| `opsrisk html` | Generate HTML reports (daily + weekly) |
 | `opsrisk run` | Run the full pipeline (fetch + score + brief) |
 
 The daily brief appears in `briefs/YYYY-MM-DD.md`. A sample is at [`briefs/2026-04-29.md`](briefs/2026-04-29.md).
 Weekly reports go to `briefs/weekly/YYYY-MM-DD.md`.
+HTML reports go to `reports/daily/YYYY-MM-DD.html` and `reports/weekly/YYYY-MM-DD.html`.
 
 ### Validation
 
@@ -126,6 +129,20 @@ python -m opsrisk weekly
 ```
 
 The report includes the top 5 signals of the week, average scores by source and category, source concentration, and a risk theme frequency analysis. See [`docs/weekly_analytics.md`](docs/weekly_analytics.md) for full details.
+
+### HTML Reports
+
+Run `python -m opsrisk html` to generate self-contained HTML versions of the daily brief and weekly trend report:
+
+```bash
+python -m opsrisk html
+```
+
+Output files:
+- `reports/daily/YYYY-MM-DD.html` -- daily brief with severity cards, top signals table, and per-article score bars
+- `reports/weekly/YYYY-MM-DD.html` -- weekly trend report with source averages, category breakdowns, and risk themes
+
+Both files are self-contained with inline CSS -- no external assets needed. See [`docs/html_reports.md`](docs/html_reports.md) for the full output format description.
 
 ### Requirements
 

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OpsRisk Radar — Weekly Trend Report</title>
+<style>
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, sans-serif;
+  background: #f0f2f5;
+  color: #1a1a2e;
+  line-height: 1.5;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Header */
+
+.header {
+  background: #1a1a2e;
+  color: #fff;
+  padding: 28px 32px;
+  border-radius: 10px;
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.header .subtitle {
+  color: #a0a0b8;
+  font-size: 14px;
+}
+
+.header .ts {
+  color: #6c6c88;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+/* Summary cards row */
+
+.summary-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.summary-card {
+  flex: 1;
+  min-width: 120px;
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.summary-card .count {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.summary-card .lbl {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.summary-card.card-critical .count { color: #7b1a1a; }
+.summary-card.card-high .count { color: #c62828; }
+.summary-card.card-medium .count { color: #e65100; }
+.summary-card.card-low .count { color: #388e3c; }
+.summary-card.card-total { background: #1a1a2e; color: #fff; }
+.summary-card.card-total .count { color: #fff; }
+.summary-card.card-total .lbl { color: #a0a0b8; }
+
+/* Sections */
+
+.section {
+  margin-bottom: 28px;
+}
+
+.section h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #e0e0e8;
+  color: #1a1a2e;
+}
+
+/* Tables */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  font-size: 14px;
+}
+
+th {
+  background: #1a1a2e;
+  color: #fff;
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #eee;
+  vertical-align: middle;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:nth-child(even) {
+  background: #f8f9fc;
+}
+
+/* Severity badges */
+
+.badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.badge-critical { background: #7b1a1a; color: #fff; }
+.badge-high     { background: #c62828; color: #fff; }
+.badge-medium   { background: #e65100; color: #fff; }
+.badge-low      { background: #546e7a; color: #fff; }
+
+/* Title cells with ellipsis */
+
+.cell-title {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-title a {
+  color: #1a1a2e;
+  text-decoration: none;
+}
+
+.cell-title a:hover {
+  text-decoration: underline;
+}
+
+/* Article cards (daily detailed view) */
+
+.article-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.article-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.article-card h3 a {
+  color: #1a1a2e;
+  text-decoration: none;
+}
+
+.article-card h3 a:hover {
+  text-decoration: underline;
+}
+
+.article-meta {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+.article-summary {
+  font-size: 13px;
+  color: #444;
+  margin-bottom: 10px;
+  line-height: 1.55;
+}
+
+/* Score bars */
+
+.score-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+  font-size: 12px;
+}
+
+.score-lbl {
+  width: 120px;
+  text-align: right;
+  font-weight: 600;
+  color: #555;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.score-track {
+  flex: 1;
+  height: 14px;
+  background: #eee;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.score-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.score-fill-critical { background: #7b1a1a; }
+.score-fill-high     { background: #c62828; }
+.score-fill-medium   { background: #e65100; }
+.score-fill-low      { background: #388e3c; }
+
+.score-num {
+  width: 28px;
+  text-align: right;
+  font-weight: 600;
+  font-size: 11px;
+  color: #555;
+  flex-shrink: 0;
+}
+
+/* Theme/trend bars (weekly) */
+
+.theme-bar-wrap {
+  display: inline-block;
+  width: 100px;
+  height: 14px;
+  background: #eee;
+  border-radius: 3px;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.theme-bar {
+  height: 100%;
+  background: #3949ab;
+  border-radius: 3px;
+}
+
+/* Footer */
+
+.footer {
+  text-align: center;
+  font-size: 12px;
+  color: #888;
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid #e0e0e8;
+}
+
+/* Mobile responsive */
+
+@media (max-width: 600px) {
+  .summary-row {
+    flex-direction: column;
+  }
+  .summary-card {
+    min-width: auto;
+  }
+  .container {
+    padding: 10px;
+  }
+  .header {
+    padding: 20px;
+  }
+  .score-lbl {
+    width: 80px;
+  }
+  th, td {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+  .cell-title {
+    max-width: 160px;
+  }
+}
+
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header"><h1>OpsRisk Radar &mdash; Weekly Trend Report</h1><div class="subtitle">2026-04-29 to 2026-04-29</div><div class="ts">Scanned <strong>227</strong> signal(s) from <strong>6</strong> source(s). Generated at 2026-04-29T21:53:06.126150+00:00</div></div><div class="summary-row"><div class="summary-card card-critical"><div class="count">0</div><div class="lbl">Critical / High</div></div><div class="summary-card card-medium"><div class="count">1</div><div class="lbl">Medium</div></div><div class="summary-card card-low"><div class="count">226</div><div class="lbl">Low</div></div><div class="summary-card card-total"><div class="count">227</div><div class="lbl">Total Signals</div></div></div><div class="section"><h2>Top Signals</h2><table><thead><tr><th>#</th><th>Severity</th><th>Signal</th><th>Source</th><th>Composite</th></tr></thead><tbody><tr><td>1</td><td><span class="badge badge-medium">MEDIUM</span></td><td class="cell-title"><a href="https://www.ttnews.com/articles/toyota-supply-chain-iran-war">Toyota Suppliers Warn of Parts Shortages Tied to Iran War</a></td><td>Transport Topics</td><td><strong>5.0</strong></td></tr><tr><td>2</td><td><span class="badge badge-low">LOW</span></td><td class="cell-title"><a href="https://www.ttnews.com/articles/amazon-earnings-q1-2026">Amazon Profit Climbs to $30 Billion in First Quarter</a></td><td>Transport Topics</td><td><strong>3.5</strong></td></tr><tr><td>3</td><td><span class="badge badge-low">LOW</span></td><td class="cell-title"><a href="https://www.pymnts.com/supply-chain/2026/grubmarket-hits-4-5-billion-valuation-as-ai-optimizes-food-supply-chain/">GrubMarket Hits $4.5 Billion Valuation as AI Optimizes Food Supply Chain</a></td><td>PYMNTS Supply Chain</td><td><strong>3.2</strong></td></tr><tr><td>4</td><td><span class="badge badge-low">LOW</span></td><td class="cell-title"><a href="https://www.supplychaindive.com/news/gm-forecasts-500m-tariff-refund-plans-further-mitigation-efforts/818752/">GM forecasts $500M tariff refund, plans further mitigation efforts</a></td><td>Supply Chain Dive</td><td><strong>3.1</strong></td></tr><tr><td>5</td><td><span class="badge badge-low">LOW</span></td><td class="cell-title"><a href="https://www.ttnews.com/articles/gm-earnings-q1-2026">GM Boosts Outlook by $500 Million</a></td><td>Transport Topics</td><td><strong>3.0</strong></td></tr></tbody></table></div><div class="section"><h2>Top Risk Signal</h2><div class="article-card"><h3>Toyota Suppliers Warn of Parts Shortages Tied to Iran War</h3><div class="article-meta">Transport Topics &mdash; <span class="badge badge-medium">MEDIUM</span> &mdash; Composite: <strong>5.0/10</strong></div><div class="score-row"><span class="score-lbl">Disruption Risk</span><div class="score-track"><div class="score-fill score-fill-critical" style="width:100%"></div></div><span class="score-num">10.0</span></div><div class="score-row"><span class="score-lbl">Business Impact</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Strategic Relevance</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Actionability</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div><div class="score-row"><span class="score-lbl">Signal Strength</span><div class="score-track"><div class="score-fill score-fill-low" style="width:10%"></div></div><span class="score-num">1.0</span></div></div></div><div class="section"><h2>Average Scores by Source</h2><table><thead><tr><th>Source</th><th>Articles</th><th>Avg Composite</th><th>Trend</th></tr></thead><tbody><tr><td>PYMNTS Supply Chain</td><td>10</td><td>1.71</td><td><div class="theme-bar-wrap"><div class="theme-bar" style="width:17%"></div></div></td></tr><tr><td>Transport Topics</td><td>40</td><td>1.67</td><td><div class="theme-bar-wrap"><div class="theme-bar" style="width:17%"></div></div></td></tr><tr><td>Supply Chain Dive</td><td>13</td><td>1.32</td><td><div class="theme-bar-wrap"><div class="theme-bar" style="width:13%"></div></div></td></tr><tr><td>SupplyChainQuarterly</td><td>32</td><td>1.26</td><td><div class="theme-bar-wrap"><div class="theme-bar" style="width:13%"></div></div></td></tr><tr><td>Interact Analysis</td><td>122</td><td>1.24</td><td><div class="theme-bar-wrap"><div class="theme-bar" style="width:12%"></div></div></td></tr><tr><td>Spend Matters</td><td>10</td><td>1.02</td><td><div class="theme-bar-wrap"><div class="theme-bar" style="width:10%"></div></div></td></tr></tbody></table></div><div class="section"><h2>Average Disruption Risk by Category</h2><table><thead><tr><th>Category</th><th>Articles</th><th>Avg Disruption Risk</th><th>Trend</th></tr></thead><tbody><tr><td>logistics</td><td>63</td><td>1.40</td><td><div class="theme-bar-wrap"><div class="theme-bar" style="width:14%"></div></div></td></tr><tr><td>operations</td><td>154</td><td>1.05</td><td><div class="theme-bar-wrap"><div class="theme-bar" style="width:11%"></div></div></td></tr><tr><td>procurement</td><td>10</td><td>1.00</td><td><div class="theme-bar-wrap"><div class="theme-bar" style="width:10%"></div></div></td></tr></tbody></table></div><div class="section"><h2>Source Concentration</h2><table><thead><tr><th>Source</th><th>Articles</th><th>% of Total</th></tr></thead><tbody><tr><td>Interact Analysis</td><td>122</td><td>53.7%</td></tr><tr><td>Transport Topics</td><td>40</td><td>17.6%</td></tr><tr><td>SupplyChainQuarterly</td><td>32</td><td>14.1%</td></tr><tr><td>Supply Chain Dive</td><td>13</td><td>5.7%</td></tr><tr><td>Spend Matters</td><td>10</td><td>4.4%</td></tr><tr><td>PYMNTS Supply Chain</td><td>10</td><td>4.4%</td></tr></tbody></table></div><div class="section"><h2>Risk Themes</h2><table><thead><tr><th>Theme</th><th>Articles Hit</th><th>% of Total</th><th>Distribution</th></tr></thead><tbody><tr><td>Tariffs &amp; Trade Policy</td><td>11</td><td>4.8%</td><td><div class="theme-bar-wrap"><div class="theme-bar" style="width:5%"></div></div></td></tr><tr><td>Supplier &amp; Parts Risk</td><td>5</td><td>2.2%</td><td><div class="theme-bar-wrap"><div class="theme-bar" style="width:2%"></div></div></td></tr><tr><td>Geopolitical Conflict</td><td>4</td><td>1.8%</td><td><div class="theme-bar-wrap"><div class="theme-bar" style="width:2%"></div></div></td></tr><tr><td>Logistics &amp; Shipping</td><td>2</td><td>0.9%</td><td><div class="theme-bar-wrap"><div class="theme-bar" style="width:1%"></div></div></td></tr><tr><td>Labor Disruptions</td><td>1</td><td>0.4%</td><td><div class="theme-bar-wrap"><div class="theme-bar" style="width:0%"></div></div></td></tr><tr><td>Market &amp; Financial Pressure</td><td>1</td><td>0.4%</td><td><div class="theme-bar-wrap"><div class="theme-bar" style="width:0%"></div></div></td></tr></tbody></table></div>
+<div class="footer">Generated at 2026-04-29T21:53:06.126150+00:00 by OpsRisk Radar</div>
+</div>
+</body>
+</html>

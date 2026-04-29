@@ -13,6 +13,7 @@ from opsrisk.scorer import make_article_score
 from opsrisk.brief import generate_brief, render_markdown, write_brief
 from opsrisk.validate import run_validations
 from opsrisk.weekly import generate_weekly_report
+from opsrisk.html_report import generate_daily_html, generate_weekly_html
 
 
 def _run_fetch(db: Database, sources) -> None:
@@ -132,6 +133,31 @@ def _cmd_weekly(args) -> None:
         db.close()
 
 
+def _cmd_html(args) -> None:
+    cfg = load_config()
+    db = Database(args.db or "data/opsrisk.db")
+    try:
+        print("=" * 50)
+        print("Generate HTML reports")
+        print("=" * 50)
+
+        reports_dir = Path("reports")
+
+        daily = generate_daily_html(db, reports_dir)
+        if daily:
+            print(f"  Daily: {daily}")
+        else:
+            print("  Daily: no data available")
+
+        weekly = generate_weekly_html(db, reports_dir)
+        if weekly:
+            print(f"  Weekly: {weekly}")
+        else:
+            print("  Weekly: no data in the last 7 days")
+    finally:
+        db.close()
+
+
 def _cmd_run(args) -> None:
     cfg = load_config()
     db = Database(args.db or "data/opsrisk.db")
@@ -185,6 +211,9 @@ def main(argv: list[str] | None = None) -> int:
 
     p_weekly = sub.add_parser("weekly", help="Generate weekly trend report")
     p_weekly.set_defaults(func=_cmd_weekly)
+
+    p_html = sub.add_parser("html", help="Generate HTML reports (daily + weekly)")
+    p_html.set_defaults(func=_cmd_html)
 
     p_run = sub.add_parser("run", help="Fetch \u2192 Score \u2192 Brief (full pipeline)")
     p_run.set_defaults(func=_cmd_run)
