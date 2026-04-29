@@ -101,7 +101,7 @@ python -m opsrisk score    # score unscored articles
 python -m opsrisk brief    # generate today's brief
 ```
 
-The generated brief appears in `briefs/YYYY-MM-DD.md`. A sample brief is available at [`briefs/2026-04-28.md`](briefs/2026-04-28.md).
+The generated brief appears in `briefs/YYYY-MM-DD.md`. A sample brief is available at [`briefs/2026-04-29.md`](briefs/2026-04-29.md).
 
 ### Validation
 
