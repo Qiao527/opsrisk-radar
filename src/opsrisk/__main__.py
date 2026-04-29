@@ -12,6 +12,7 @@ from opsrisk.feed import fetch_all_feeds
 from opsrisk.scorer import make_article_score
 from opsrisk.brief import generate_brief, render_markdown, write_brief
 from opsrisk.validate import run_validations
+from opsrisk.weekly import generate_weekly_report
 
 
 def _run_fetch(db: Database, sources) -> None:
@@ -115,6 +116,22 @@ def _cmd_validate(args) -> None:
         db.close()
 
 
+def _cmd_weekly(args) -> None:
+    cfg = load_config()
+    db = Database(args.db or "data/opsrisk.db")
+    try:
+        print("=" * 50)
+        print("Weekly Trend Analytics")
+        print("=" * 50)
+        path = generate_weekly_report(db, cfg.briefs_dir)
+        if path:
+            print(f"Weekly report written to {path}")
+        else:
+            print("No data available for the last 7 days.")
+    finally:
+        db.close()
+
+
 def _cmd_run(args) -> None:
     cfg = load_config()
     db = Database(args.db or "data/opsrisk.db")
@@ -165,6 +182,9 @@ def main(argv: list[str] | None = None) -> int:
 
     p_val = sub.add_parser("validate", help="Run data quality checks on database")
     p_val.set_defaults(func=_cmd_validate)
+
+    p_weekly = sub.add_parser("weekly", help="Generate weekly trend report")
+    p_weekly.set_defaults(func=_cmd_weekly)
 
     p_run = sub.add_parser("run", help="Fetch \u2192 Score \u2192 Brief (full pipeline)")
     p_run.set_defaults(func=_cmd_run)

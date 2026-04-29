@@ -136,6 +136,16 @@ The command runs four groups of checks and exits with code 1 on any failure:
 
 See [`docs/data_quality.md`](docs/data_quality.md) for a full description of each check.
 
+### Weekly Trend Analytics
+
+Run `python -m opsrisk weekly` to generate a weekly trend report under `briefs/weekly/YYYY-MM-DD.md`:
+
+```bash
+python -m opsrisk weekly
+```
+
+The report includes the top 5 signals of the week, average scores by source and category, source concentration, and a risk theme frequency analysis. See [`docs/weekly_analytics.md`](docs/weekly_analytics.md) for full details.
+
 ### Sample Output
 
 After a successful run, the brief's top signal is a ranked MEDIUM-severity story:
@@ -162,8 +172,10 @@ The full daily brief with all scored articles and per-dimension breakdowns is wr
 ```
 opsrisk-radar/
 ├── docs/                 # Documentation
-│   ├── architecture.md   # Pipeline stages and module responsibilities
-│   └── methodology.md    # Scoring dimensions, weights, calibration
+│   ├── architecture.md    # Pipeline stages and module responsibilities
+│   ├── methodology.md     # Scoring dimensions, weights, calibration
+│   ├── data_quality.md    # Validation checks and diagnostics
+│   └── weekly_analytics.md # Weekly trend report sections
 ├── src/opsrisk/          # Core library
 │   ├── config.py         # TOML config loader
 │   ├── models.py         # Data models (Article, Score, Brief)
@@ -171,6 +183,8 @@ opsrisk-radar/
 │   ├── feed.py           # RSS feed fetching and parsing
 │   ├── scorer.py         # Rule-based risk scoring engine
 │   ├── brief.py          # Markdown brief generator
+│   ├── validate.py       # Data quality validation
+│   ├── weekly.py         # Weekly trend report generator
 │   └── __main__.py       # CLI entry point
 ├── config/
 │   └── sources.toml      # RSS feed list and scoring weights
