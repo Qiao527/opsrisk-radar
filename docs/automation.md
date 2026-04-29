@@ -20,6 +20,7 @@ Steps:
 7. Upload artifacts:
    - `reports/daily/*.html` as `daily-reports` (7-day retention)
    - `reports/weekly/*.html` as `daily-weekly-reports` (7-day retention, if generated)
+8. Send email digest (if secrets configured): sends the latest `reports/daily/*-email.html` via Resend API
 
 ### Weekly Brief
 
@@ -37,6 +38,7 @@ Steps:
 7. Generate HTML reports: `python -m opsrisk html`
 8. Upload artifacts:
    - `reports/weekly/*.html` and `reports/weekly/*.md` as `weekly-reports` (14-day retention)
+9. Send weekly report email (if secrets configured): sends the latest `reports/weekly/*.html` via Resend API
 
 ## Running Manually
 
@@ -61,15 +63,53 @@ After a workflow run completes:
 
 Artifacts are retained for 7 days (daily) or 14 days (weekly). Download them promptly or set up a downstream pipeline for longer retention.
 
-## Adding Secrets (Future)
+## Email Delivery (Optional)
 
-When email delivery is configured, the following secrets will need to be added in **Settings > Secrets and variables > Actions**:
+Reports can be sent by email using the Resend API. The script uses only Python stdlib -- no additional dependencies.
 
-| Secret | Purpose |
-|--------|---------|
-| `RESEND_API_KEY` | Resend.com API key for sending email reports |
-| `REPORT_EMAIL_TO` | Recipient email address |
-| `REPORT_EMAIL_FROM` | Sender email address |
+### Send Script
+
+**File:** `scripts/send_report_email.py`
+
+```bash
+python scripts/send_report_email.py reports/daily/2026-04-29-email.html
+python scripts/send_report_email.py reports/weekly/2026-04-29.html
+```
+
+The script infers daily vs weekly from the file path and extracts the date from the filename. It reads the HTML file and sends it as the email body.
+
+### Required Secrets
+
+To enable email delivery, add these secrets in **Settings > Secrets and variables > Actions**:
+
+| Secret | Example | Purpose |
+|--------|---------|---------|
+| `RESEND_API_KEY` | `re_123abc...` | Resend.com API key |
+| `REPORT_EMAIL_TO` | `team@company.com` | Recipient email address |
+| `REPORT_EMAIL_FROM` | `OpsRisk Radar <reports@yourdomain.com>` | Sender email address |
+
+### Setup Steps
+
+1. Sign up at [resend.com](https://resend.com) and verify a domain
+2. Create an API key in the Resend dashboard
+3. Add the three secrets to your GitHub repository
+4. Email delivery activates automatically on the next scheduled run
+
+The email step uses `continue-on-error: true`, so the workflow succeeds even if secrets are not yet configured.
+
+### Local Testing (without sending)
+
+The script fails clearly when required env vars are missing:
+
+```bash
+# Missing file path
+python scripts/send_report_email.py
+# ERROR: Missing report file path.
+
+# Missing env vars
+python scripts/send_report_email.py reports/daily/2026-04-29-email.html
+# ERROR: Missing required environment variable(s): RESEND_API_KEY, REPORT_EMAIL_TO, REPORT_EMAIL_FROM
+```
 
 ## Local Testing
 

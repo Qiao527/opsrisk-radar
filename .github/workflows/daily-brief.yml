@@ -43,3 +43,18 @@ jobs:
           path: reports/weekly/*.html
           retention-days: 7
           if-no-files-found: ignore
+
+      - name: Send email digest
+        if: env.RESEND_API_KEY != ''
+        continue-on-error: true
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          REPORT_EMAIL_TO: ${{ secrets.REPORT_EMAIL_TO }}
+          REPORT_EMAIL_FROM: ${{ secrets.REPORT_EMAIL_FROM }}
+        run: |
+          DIGEST=$(ls reports/daily/*-email.html 2>/dev/null | head -1)
+          if [ -n "$DIGEST" ]; then
+            python scripts/send_report_email.py "$DIGEST"
+          else
+            echo "No email digest found, skipping send"
+          fi

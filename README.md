@@ -150,6 +150,8 @@ Both files are self-contained with inline CSS -- no external assets needed. See 
 
 OpsRisk Radar includes GitHub Actions workflows for scheduled report generation. See [`docs/automation.md`](docs/automation.md) for details on the daily and weekly schedules, manual triggering, and artifact downloads.
 
+Optional email delivery via Resend API is available. Set `RESEND_API_KEY`, `REPORT_EMAIL_TO`, and `REPORT_EMAIL_FROM` as GitHub Secrets to enable it. The email step fails gracefully if secrets are not configured.
+
 ### Requirements
 
 - Python 3.11+ (uses `tomllib` from stdlib)
