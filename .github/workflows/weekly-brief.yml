@@ -1,0 +1,42 @@
+name: Weekly Brief
+
+on:
+  schedule:
+    # 12:30 UTC = 7:30 AM EST / 8:30 AM EDT (America/New_York), Mondays
+    - cron: "30 12 * * 1"
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install package
+        run: pip install -e .
+
+      - name: Fetch feeds and score
+        run: python -m opsrisk run
+
+      - name: Validate database
+        run: python -m opsrisk validate
+
+      - name: Generate weekly Markdown report
+        run: python -m opsrisk weekly
+
+      - name: Generate HTML reports
+        run: python -m opsrisk html
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-reports
+          path: |
+            reports/weekly/*.html
+            reports/weekly/*.md
+          retention-days: 14

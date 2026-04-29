@@ -146,6 +146,10 @@ Output files:
 
 Both files are self-contained with inline CSS -- no external assets needed. See [`docs/html_reports.md`](docs/html_reports.md) for the full output format description.
 
+### Automation
+
+OpsRisk Radar includes GitHub Actions workflows for scheduled report generation. See [`docs/automation.md`](docs/automation.md) for details on the daily and weekly schedules, manual triggering, and artifact downloads.
+
 ### Requirements
 
 - Python 3.11+ (uses `tomllib` from stdlib)

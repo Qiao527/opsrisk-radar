@@ -1,0 +1,45 @@
+name: Daily Brief
+
+on:
+  schedule:
+    # 12:00 UTC = 7:00 AM EST / 8:00 AM EDT (America/New_York)
+    - cron: "0 12 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install package
+        run: pip install -e .
+
+      - name: Fetch feeds and score
+        run: python -m opsrisk run
+
+      - name: Validate database
+        run: python -m opsrisk validate
+
+      - name: Generate HTML reports
+        run: python -m opsrisk html
+
+      - name: Upload daily report
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-reports
+          path: reports/daily/*.html
+          retention-days: 7
+
+      - name: Upload weekly report (if any)
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-weekly-reports
+          path: reports/weekly/*.html
+          retention-days: 7
+          if-no-files-found: ignore
