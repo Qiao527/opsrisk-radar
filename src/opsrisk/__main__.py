@@ -13,7 +13,11 @@ from opsrisk.scorer import make_article_score
 from opsrisk.brief import generate_brief, render_markdown, write_brief
 from opsrisk.validate import run_validations
 from opsrisk.weekly import generate_weekly_report
-from opsrisk.html_report import generate_daily_html, generate_weekly_html
+from opsrisk.html_report import (
+    generate_daily_html,
+    generate_weekly_html,
+    generate_email_digest,
+)
 from opsrisk.source_audit import audit_sources, print_audit
 
 
@@ -149,6 +153,12 @@ def _cmd_html(args) -> None:
             print(f"  Daily: {daily}")
         else:
             print("  Daily: no data available")
+
+        email = generate_email_digest(db, reports_dir)
+        if email:
+            print(f"  Email: {email}")
+        else:
+            print("  Email: no data available")
 
         weekly = generate_weekly_html(db, reports_dir)
         if weekly:

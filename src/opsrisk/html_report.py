@@ -792,3 +792,275 @@ def generate_weekly_html(db: Database, reports_dir: Path) -> Path | None:
     out_path = out_dir / f"{date_str}.html"
     out_path.write_text(html_content)
     return out_path
+
+
+# ---------------------------------------------------------------------------
+# Email digest (display-only signal prioritization, not scoring)
+# ---------------------------------------------------------------------------
+
+# Patterns used to demote earnings/business-noise articles in the email
+# digest.  These affect display ordering only, not article scores.
+
+_EARNINGS_DEMOTE_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r, re.IGNORECASE)
+    for r in [
+        r"\bearnings\b",
+        r"\bprofit\b",
+        r"\brevenue\b",
+        r"\bvaluation\b",
+        r"\bnet\s+income\b",
+        r"\bQ[1-4]\b",
+        r"\bquarterly\b",
+        r"\bstock\b",
+        r"\bshares\b",
+    ]
+]
+
+# Category bonus — categories more likely to carry operational disruption
+# signals are boosted in the digest ordering.
+
+_CATEGORY_BONUS: dict[str, int] = {
+    "port_disruption": 3,
+    "freight_logistics": 2,
+    "customs_trade": 2,
+    "manufacturing_ops": 2,
+    "logistics": 1,
+    "procurement": 1,
+}
+
+# Category label mapping for display
+
+_CATEGORY_LABEL: dict[str, str] = {
+    "port_disruption": "Port Disruption",
+    "freight_logistics": "Freight & Logistics",
+    "customs_trade": "Customs & Trade",
+    "manufacturing_ops": "Manufacturing",
+    "logistics": "Logistics",
+    "procurement": "Procurement",
+    "operations": "Operations",
+}
+
+
+def _signal_priority(r: dict[str, Any]) -> float:
+    """Display-only priority score for the email digest.
+
+    Higher values rank higher in the digest.  Considers disruption risk,
+    source category, and an earnings-noise penalty.  This does not affect
+    any stored article score.
+    """
+    disruption = r.get("disruption_risk", 1.0)
+    category = r.get("source_category", "")
+    title = r.get("title", "")
+
+    cat_bonus = _CATEGORY_BONUS.get(category, 0)
+
+    earnings_penalty = 0
+    for pat in _EARNINGS_DEMOTE_PATTERNS:
+        if pat.search(title):
+            earnings_penalty = -5
+            break
+
+    return disruption * 2.0 + cat_bonus + earnings_penalty
+
+
+def _email_takeaway(rows: list[dict]) -> str:
+    """Generate a one-sentence 'Today's Takeaway' summary."""
+    high = sum(1 for r in rows if r["composite_score"] >= 7.0)
+    med = sum(1 for r in rows if r["composite_score"] >= 4.0)
+
+    if high > 0:
+        s = "s" if high > 1 else ""
+        return (
+            f"Today's scan detected <strong>{high}</strong> high-risk signal{s} "
+            f"requiring immediate attention."
+        )
+    if med > 0:
+        s = "s" if med > 1 else ""
+        return (
+            f"Today's scan detected <strong>{med}</strong> medium-risk signal{s}. "
+            f"Review recommended."
+        )
+    return (
+        "No elevated risk signals detected in today's scan. "
+        "Continuing to monitor all sources."
+    )
+
+
+_EMAIL_CSS = """
+.email-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f4f5f7;margin:0;padding:0}
+.email-container{max-width:600px;margin:0 auto;background:#ffffff}
+.email-header{background:#1a1a2e;color:#ffffff;padding:24px 28px;text-align:center}
+.email-header h1{font-size:20px;font-weight:700;margin:0 0 2px 0}
+.email-header .sub{color:#a0a0b8;font-size:13px}
+.email-section{padding:20px 28px}
+.email-section h2{font-size:16px;font-weight:700;margin:0 0 10px 0;padding-bottom:6px;border-bottom:2px solid #e0e0e8}
+.takeaway{font-size:14px;line-height:1.5;color:#333;background:#f0f4ff;padding:14px 18px;border-radius:6px;border-left:4px solid #3949ab}
+.kpi-row{text-align:center;padding:16px 28px 8px 28px}
+.kpi-table{width:100%;border-collapse:collapse}
+.kpi-cell{padding:10px;text-align:center;font-size:12px;vertical-align:top;width:25%}
+.kpi-count{font-size:28px;font-weight:700;line-height:1.2}
+.kpi-label{font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:#666;margin-top:2px}
+.kpi-critical{color:#7b1a1a}
+.kpi-medium{color:#e65100}
+.kpi-low{color:#388e3c}
+.kpi-total{color:#1a1a2e}
+.signal-card{padding:14px 0;border-bottom:1px solid #eee;font-size:13px}
+.signal-card:last-child{border-bottom:none}
+.signal-title{font-weight:700;margin-bottom:2px;color:#1a1a2e}
+.signal-meta{font-size:11px;color:#888;margin-bottom:2px}
+.signal-score{font-size:11px;color:#555}
+.signal-badge{display:inline-block;padding:1px 7px;border-radius:3px;font-size:10px;font-weight:700;text-transform:uppercase}
+.bg-critical{background:#7b1a1a;color:#fff}
+.bg-high{background:#c62828;color:#fff}
+.bg-medium{background:#e65100;color:#fff}
+.bg-low{background:#546e7a;color:#fff}
+.source-note{font-size:12px;color:#666;line-height:1.5;padding:14px 18px;background:#f8f9fc;border-radius:6px}
+.archive-link{font-size:12px;color:#888;text-align:center;padding:16px 28px;border-top:1px solid #e0e0e8}
+@media(max-width:480px){.email-container{max-width:100%}.email-section{padding:14px 16px}.kpi-count{font-size:22px}}
+"""
+
+
+def _email_page(date_str: str, body: str) -> str:
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OpsRisk Radar Daily Digest \u2014 {_esc(date_str)}</title>
+<style>{_EMAIL_CSS}</style>
+</head>
+<body class="email-body">
+<div class="email-container">
+{body}
+</div>
+</body>
+</html>"""
+
+
+def _email_kpi_row(high: int, med: int, low: int) -> str:
+    total = high + med + low
+    return (
+        '<div class="kpi-row">'
+        '<table class="kpi-table"><tr>'
+        f'<td class="kpi-cell"><div class="kpi-count kpi-critical">{high}</div><div class="kpi-label">Critical / High</div></td>'
+        f'<td class="kpi-cell"><div class="kpi-count kpi-medium">{med}</div><div class="kpi-label">Medium</div></td>'
+        f'<td class="kpi-cell"><div class="kpi-count kpi-low">{low}</div><div class="kpi-label">Low</div></td>'
+        f'<td class="kpi-cell"><div class="kpi-count kpi-total">{total}</div><div class="kpi-label">Total</div></td>'
+        "</tr></table>"
+        "</div>"
+    )
+
+
+def _email_top_signals(top5: list[dict]) -> str:
+    parts: list[str] = ['<div class="email-section">']
+    parts.append("<h2>Top Operational Signals</h2>")
+    for i, r in enumerate(top5, 1):
+        title = _esc(r.get("title", "Untitled"))
+        src = _esc(r.get("source_name", "Unknown"))
+        cat = r.get("source_category", "")
+        cat_label = _CATEGORY_LABEL.get(cat, cat.capitalize())
+        sev = _severity_label(r["composite_score"])
+        badge_class = f"bg-{sev.lower()}"
+        dis = r.get("disruption_risk", 0.0)
+        comp = r.get("composite_score", 0.0)
+        url = r.get("url", "")
+
+        title_html = (
+            f'<a href="{_esc(url)}" style="color:#1a1a2e;text-decoration:none">{title}</a>'
+            if url
+            else title
+        )
+
+        parts.append(
+            '<div class="signal-card">'
+            f'<div style="font-size:11px;color:#999;margin-bottom:1px">{i}.</div>'
+            f'<div class="signal-title">{title_html}</div>'
+            f'<div class="signal-meta">{src} &mdash; {cat_label}'
+            f' &mdash; <span class="signal-badge {badge_class}">{sev}</span></div>'
+            f'<div class="signal-score">Disruption Risk: {dis:.1f}/10'
+            f" &mdash; Composite: {comp:.1f}/10</div>"
+            "</div>"
+        )
+    parts.append("</div>")
+    return "".join(parts)
+
+
+def _email_source_note(rows: list[dict], total_sources: int) -> str:
+    return (
+        '<div class="email-section">'
+        "<h2>Source Quality Note</h2>"
+        '<div class="source-note">'
+        f"Scanned <strong>{len(rows)}</strong> signal(s) from "
+        f"<strong>{total_sources}</strong> active source(s). "
+        "The email digest prioritizes operational disruption signals "
+        "over earnings reports and market forecasts. "
+        "See the full archive report for the complete list."
+        "</div>"
+        "</div>"
+    )
+
+
+def generate_email_digest(db: Database, reports_dir: Path) -> Path | None:
+    """Generate a compact email-friendly daily digest.
+
+    Uses display-only signal prioritization to surface the 5 most
+    operationally relevant articles.  Written to
+    ``reports_dir/daily/YYYY-MM-DD-email.html``.
+    """
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    rows = db.get_recent_scored_articles(since=today)
+    if not rows:
+        rows = db.get_recent_scored_articles(since=f"{today[:8]}01", limit=50)
+    if not rows:
+        return None
+
+    # Sort by display-only priority and take top 5
+    top5 = sorted(rows, key=_signal_priority, reverse=True)[:5]
+
+    total_sources = len(set(r["source_name"] for r in rows))
+    high = sum(1 for r in rows if r["composite_score"] >= 7.0)
+    med = sum(1 for r in rows if r["composite_score"] >= 4.0)
+    low = len(rows) - high - med
+
+    parts: list[str] = []
+
+    # Header
+    parts.append(
+        '<div class="email-header">'
+        "<h1>OpsRisk Radar &mdash; Daily Digest</h1>"
+        f'<div class="sub">{_esc(today)}</div>'
+        "</div>"
+    )
+
+    # Today's Takeaway
+    parts.append(
+        '<div class="email-section">'
+        "<h2>Today&rsquo;s Takeaway</h2>"
+        f'<div class="takeaway">{_email_takeaway(rows)}</div>'
+        "</div>"
+    )
+
+    # KPI row
+    parts.append(_email_kpi_row(high, med, low))
+
+    # Top signals
+    parts.append(_email_top_signals(top5))
+
+    # Source quality note
+    parts.append(_email_source_note(rows, total_sources))
+
+    # Link to full archive
+    archive_path = reports_dir / "daily" / f"{today}.html"
+    parts.append(
+        '<div class="archive-link">'
+        f"Full archive: <code>{_esc(str(archive_path))}</code><br>"
+        "Open the full HTML report for all scored articles and "
+        "detailed score breakdowns."
+        "</div>"
+    )
+
+    out_dir = reports_dir / "daily"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"{today}-email.html"
+    out_path.write_text(_email_page(today, "".join(parts)))
+    return out_path

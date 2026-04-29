@@ -1,15 +1,16 @@
 # HTML Reports
 
-`python -m opsrisk html` generates self-contained HTML versions of the daily brief and weekly trend report under `reports/daily/` and `reports/weekly/`.
+`python -m opsrisk html` generates self-contained HTML versions of the daily brief, daily email digest, and weekly trend report under `reports/daily/` and `reports/weekly/`.
 
 ## Output Files
 
-| Report | Path |
-|--------|------|
-| Daily | `reports/daily/YYYY-MM-DD.html` |
-| Weekly | `reports/weekly/YYYY-MM-DD.html` |
+| Report | Path | Purpose |
+|--------|------|---------|
+| Full Daily | `reports/daily/YYYY-MM-DD.html` | Complete archive with all scored articles |
+| Email Digest | `reports/daily/YYYY-MM-DD-email.html` | Compact email-friendly daily briefing |
+| Weekly | `reports/weekly/YYYY-MM-DD.html` | Trend report with source averages and themes |
 
-Both files are fully self-contained -- all CSS is inlined in a `<style>` tag. No external assets, no network requests. They can be opened in any browser or embedded in email bodies.
+All files are fully self-contained -- all CSS is inlined in a `<style>` tag. No external assets, no network requests. They can be opened in any browser or embedded in email bodies.
 
 ## Daily Report Sections
 
@@ -28,6 +29,39 @@ One card per scored article, sorted by composite score descending. Each card con
 - Source name, category, publication date, and severity badge
 - Summary text (first 300 characters)
 - Six score bars (Composite, Disruption Risk, Business Impact, Strategic Relevance, Actionability, Signal Strength) as horizontal colored fills
+
+## Email Digest Sections
+
+The email digest (`reports/daily/YYYY-MM-DD-email.html`) is a compact version designed for quick daily reading. It uses **display-only signal prioritization** -- articles are ranked by operational disruption relevance, not by composite score alone. This does not affect the stored article scores or the full report.
+
+### Signal Prioritization
+
+Articles are ranked using a display-only priority metric:
+
+- **Disruption risk** (weighted 2x) -- higher disruption risk is preferred
+- **Category bonus** -- port_disruption (+3), freight_logistics (+2), customs_trade (+2), manufacturing_ops (+2), logistics (+1), procurement (+1)
+- **Earnings noise penalty** (-5) -- titles matching earnings, profit, revenue, valuation, net income, quarterly, stock, or shares are demoted
+
+The top 5 articles by this priority appear in the digest.
+
+### Header
+Report title and date on a dark background.
+
+### Today's Takeaway
+A one-sentence summary based on the highest severity level detected.
+
+### KPI Row
+Four compact metrics: Critical/High, Medium, Low, and Total signal count.
+
+### Top Operational Signals
+The 5 highest-priority articles, each showing:
+- Rank number and linked title
+- Source name and category label
+- Severity badge (colored)
+- Disruption risk and composite scores
+
+### Source Quality Note
+Article count and active source count, with a brief explanation of the digest's signal prioritization.
 
 ## Weekly Report Sections
 
@@ -70,4 +104,4 @@ Eight broad risk categories matched against article titles using keyword pattern
 python -m opsrisk html
 ```
 
-The command generates both reports in one pass. It prints the output paths on success or reports when no data is available.
+The command generates all reports in one pass: full daily, email digest, and weekly. It prints the output paths on success or reports when no data is available.
