@@ -40,7 +40,7 @@ Scoring is interpretable and fully rule-based. Each article is evaluated across 
 | Dimension | Weight | What It Measures | Example Keywords |
 |-----------|--------|------------------|------------------|
 | Disruption Risk | 45% | Likelihood of operational disruption | shortage, strike, war, port congestion, factory shutdown, recall, sanctions, shipping delay |
-| Business Impact | 25% | Financial magnitude | $ amounts, revenue, profit, loss, tariff, bankruptcy, inflation |
+| Business Impact | 25% | Financial magnitude | Dollar amounts, revenue, profit, loss, tariff, bankruptcy, inflation |
 | Actionability | 15% | Regulatory or deadline-driven urgency | compliance, deadline, ban, sanctions, audit, executive order |
 | Signal Strength | 10% | Specificity and authority | named entities (China, US, EU), percentages, dollar figures |
 | Strategic Relevance | 5% | Long-term alignment | reshoring, automation, sustainability, ESG, supply chain resilience |
@@ -86,7 +86,7 @@ The severity distribution across 202 articles: 201 LOW, 1 MEDIUM, 0 HIGH, 0 CRIT
 
 ```bash
 # Clone and set up
-git clone <repo-url> && cd opsrisk-radar
+git clone https://github.com/Qiao527/opsrisk-radar.git && cd opsrisk-radar
 python3 -m venv .venv && source .venv/bin/activate
 
 # Install
@@ -119,6 +119,20 @@ The script:
 
 It exits with a non-zero code on any failure, making it suitable for automated environments.
 
+### Sample Output
+
+After a successful run, the brief's top signal is a ranked MEDIUM-severity story:
+
+```
+| # | Severity | Signal                                                  | Source            |
+|---|----------|---------------------------------------------------------|-------------------|
+| 1 | MEDIUM   | Toyota Suppliers Warn of Parts Shortages Tied to Iran War | Transport Topics |
+
+Score breakdown: D10 B1 S1 A1 Sig1 | Composite: 5.0/10
+```
+
+The full daily brief with all scored articles and per-dimension breakdowns is written to `briefs/YYYY-MM-DD.md`.
+
 ### Requirements
 
 - Python 3.11+ (uses `tomllib` from stdlib)
@@ -145,7 +159,8 @@ opsrisk-radar/
 │   └── sources.toml      # RSS feed list and scoring weights
 ├── data/                 # SQLite database (auto-created)
 ├── briefs/               # Generated daily briefs
-└── scripts/run.sh        # Convenience runner script
+├── scripts/run.sh         # Convenience pipeline runner
+└── scripts/check.sh       # End-to-end validation script
 ```
 
 ---
