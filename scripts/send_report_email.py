@@ -88,6 +88,8 @@ def main() -> None:
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "OpsRisk-Radar/1.0 (https://github.com/Qiao527/opsrisk-radar)",
         },
         method="POST",
     )
