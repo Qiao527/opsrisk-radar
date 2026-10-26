@@ -3,25 +3,26 @@
 from __future__ import annotations
 
 import argparse
-import asyncio
 import sys
 from collections.abc import Callable
 from pathlib import Path
 
+from opsrisk import __version__, pipeline
 from opsrisk.brief import render_markdown, write_brief
 from opsrisk.config import AppConfig, load_config
 from opsrisk.database import Database
 from opsrisk.email_digest import generate_email_digest
 from opsrisk.evaluate import LabelError, evaluate, format_report, load_labels, rule_scorer
-from opsrisk.feed import fetch_all_feeds
 from opsrisk.html_report import generate_daily_html, generate_weekly_html
+from opsrisk.log import setup_logging
 from opsrisk.report_data import load_daily_brief
-from opsrisk.scorer import make_article_score
+from opsrisk.scorer import SCORER_ID
 from opsrisk.source_audit import audit_sources, print_audit
 from opsrisk.validate import run_validations
 from opsrisk.weekly import generate_weekly_report
 
 DEFAULT_DB = "data/opsrisk.db"
+DEFAULT_CONFIG = Path("config/sources.toml")
 REPORTS_DIR = Path("reports")
 EVAL_LABELS = Path("eval/labels.csv")
 
@@ -30,57 +31,6 @@ def _banner(title: str) -> None:
     print("=" * 50)
     print(title)
     print("=" * 50)
-
-
-# ---------------------------------------------------------------------------
-# Pipeline steps
-# ---------------------------------------------------------------------------
-
-
-def _run_fetch(db: Database, cfg: AppConfig) -> None:
-    articles = asyncio.run(fetch_all_feeds(cfg.feeds))
-    new_count = 0
-    for a in articles:
-        _, is_new = db.upsert_article(
-            url=a.url,
-            title=a.title,
-            published=a.published,
-            source_name=a.source_name,
-            source_category=a.source_category,
-            summary=a.summary,
-            raw_content=a.raw_content,
-        )
-        new_count += is_new
-    print(
-        f"  Inserted {new_count} new article(s), "
-        f"refreshed {len(articles) - new_count} already stored"
-    )
-
-
-def _run_score(db: Database, cfg: AppConfig) -> None:
-    unscored = db.get_unscored_articles()
-    if not unscored:
-        print("No unscored articles to process.")
-        return
-    print(f"Scoring {len(unscored)} article(s)...")
-    for row in unscored:
-        score = make_article_score(
-            article_id=row.id,
-            title=row.title,
-            summary=row.summary,
-            weights=cfg.scoring.composite_weights,
-            source_name=row.source_name,
-        )
-        db.save_score(
-            article_id=score.article_id,
-            disruption_risk=score.disruption_risk,
-            business_impact=score.business_impact,
-            strategic_relevance=score.strategic_relevance,
-            actionability=score.actionability,
-            signal_strength=score.signal_strength,
-            composite_score=score.composite_score,
-        )
-    print(f"  Scored {len(unscored)} article(s)")
 
 
 def _run_brief(db: Database, cfg: AppConfig) -> None:
@@ -98,26 +48,26 @@ def _run_brief(db: Database, cfg: AppConfig) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _cmd_fetch(db: Database, cfg: AppConfig) -> int:
-    _run_fetch(db, cfg)
+def _cmd_fetch(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
+    pipeline.fetch(db, cfg, min_ok_ratio=args.min_ok_feeds)
     return 0
 
 
-def _cmd_score(db: Database, cfg: AppConfig) -> int:
-    _run_score(db, cfg)
+def _cmd_score(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
+    pipeline.score(db, cfg)
     return 0
 
 
-def _cmd_brief(db: Database, cfg: AppConfig) -> int:
+def _cmd_brief(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
     _run_brief(db, cfg)
     return 0
 
 
-def _cmd_validate(db: Database, cfg: AppConfig) -> int:
+def _cmd_validate(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
     return 0 if run_validations(db) else 1
 
 
-def _cmd_weekly(db: Database, cfg: AppConfig) -> int:
+def _cmd_weekly(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
     _banner("Weekly Trend Analytics")
     path = generate_weekly_report(db, cfg.briefs_dir)
     if path:
@@ -127,7 +77,7 @@ def _cmd_weekly(db: Database, cfg: AppConfig) -> int:
     return 0
 
 
-def _cmd_html(db: Database, cfg: AppConfig) -> int:
+def _cmd_html(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
     _banner("Generate HTML reports")
     outputs = [
         ("Daily", generate_daily_html, "no data available"),
@@ -140,12 +90,13 @@ def _cmd_html(db: Database, cfg: AppConfig) -> int:
     return 0
 
 
-def _cmd_source_audit(db: Database, cfg: AppConfig) -> int:
+def _cmd_source_audit(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
     print_audit(audit_sources(db))
     return 0
 
 
-def _cmd_evaluate(db: Database, cfg: AppConfig, labels: Path = EVAL_LABELS) -> int:
+def _cmd_evaluate(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
+    labels = EVAL_LABELS
     try:
         articles, unlabeled = load_labels(labels)
     except FileNotFoundError:
@@ -163,23 +114,49 @@ def _cmd_evaluate(db: Database, cfg: AppConfig, labels: Path = EVAL_LABELS) -> i
     return 0
 
 
-def _cmd_run(db: Database, cfg: AppConfig) -> int:
-    steps = [
-        ("Step 1: Fetch feeds", _run_fetch),
-        ("Step 2: Score articles", _run_score),
-        ("Step 3: Generate brief", _run_brief),
-    ]
-    for i, (title, step) in enumerate(steps):
-        if i:
-            print()
-        _banner(title)
-        step(db, cfg)
+def _cmd_run(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
+    """Fetch, score and brief, recorded as one row in the ``runs`` table."""
+    run_id = db.start_run("run", __version__, pipeline.git_sha(),
+                          pipeline.config_hash(args.config), SCORER_ID)
+    stats: dict = {}
+    try:
+        _banner("Step 1: Fetch feeds")
+        stats.update(pipeline.fetch(db, cfg, run_id, min_ok_ratio=args.min_ok_feeds).as_dict())
+        print()
+        _banner("Step 2: Score articles")
+        stats["scored"] = pipeline.score(db, cfg)
+        print()
+        _banner("Step 3: Generate brief")
+        _run_brief(db, cfg)
+    except pipeline.PipelineError as exc:
+        db.finish_run(run_id, "failed", stats, str(exc))
+        print(f"\nRun {run_id} FAILED: {exc}", file=sys.stderr)
+        return 2
+    except Exception as exc:
+        db.finish_run(run_id, "failed", stats, f"{type(exc).__name__}: {exc}")
+        raise
+    status = "partial" if stats.get("feeds_failed") else "ok"
+    db.finish_run(run_id, status, stats)
     print()
-    print("Done.")
+    print(f"Done. Run {run_id}: {status}.")
     return 0
 
 
-Command = Callable[[Database, AppConfig], int]
+def _cmd_status(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
+    runs = db.last_runs(limit=5)
+    if not runs:
+        print("No pipeline runs recorded yet.")
+        return 0
+    for r in runs:
+        s = r["stats"]
+        print(f"#{r['id']:<4} {r['started_at']}  {r['status']:<8} "
+              f"feeds {s.get('feeds_ok', '-')}/{s.get('feeds_total', '-')}  "
+              f"new {s.get('new', '-')}  scored {s.get('scored', '-')}  "
+              f"v{r['version']} {(r['git_sha'] or '')[:7]}")
+    return 0
+
+
+Command = Callable[[Database, AppConfig, argparse.Namespace], int]
 
 COMMANDS: list[tuple[str, str, Command]] = [
     ("fetch", "Fetch RSS feeds into database", _cmd_fetch),
@@ -189,30 +166,42 @@ COMMANDS: list[tuple[str, str, Command]] = [
     ("weekly", "Generate weekly trend report", _cmd_weekly),
     ("html", "Generate HTML reports (daily + weekly)", _cmd_html),
     ("source-audit", "Audit source quality metrics", _cmd_source_audit),
-    ("run", "Fetch \u2192 Score \u2192 Brief (full pipeline)", _cmd_run),
+    ("run", "Fetch → Score → Brief (full pipeline)", _cmd_run),
+    ("status", "Show recent pipeline runs", _cmd_status),
     ("evaluate", "Measure ranking quality against eval/labels.csv", _cmd_evaluate),
 ]
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="opsrisk",
         description="OpsRisk Radar — Supply Chain Risk Intelligence Brief",
     )
-    parser.add_argument(
-        "--db",
-        default=DEFAULT_DB,
-        help=f"Path to SQLite database (default: {DEFAULT_DB})",
-    )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument("--db", default=DEFAULT_DB,
+                        help=f"Path to SQLite database (default: {DEFAULT_DB})")
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG,
+                        help=f"Feed and scoring config (default: {DEFAULT_CONFIG})")
+    parser.add_argument("--log-format", choices=["text", "json"], default="text")
+    parser.add_argument("--log-level", default="WARNING")
+    parser.add_argument("--min-ok-feeds", type=float, default=0.5, metavar="RATIO",
+                        help="Fail fetch/run if fewer feeds succeed (default: 0.5)")
     sub = parser.add_subparsers(title="commands", required=True)
     for name, help_text, func in COMMANDS:
         sub.add_parser(name, help=help_text).set_defaults(func=func)
+    return parser
 
-    args = parser.parse_args(argv)
-    cfg = load_config()
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    setup_logging(args.log_format, args.log_level)
+    cfg = load_config(args.config)
     db = Database(args.db)
     try:
-        return args.func(db, cfg)
+        return args.func(db, cfg, args)
+    except pipeline.PipelineError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
     finally:
         db.close()
 

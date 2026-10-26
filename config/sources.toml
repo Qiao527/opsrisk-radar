@@ -23,7 +23,9 @@ enabled = true
 name = "Spend Matters"
 url = "https://spendmatters.com/feed/"
 category = "procurement"
-enabled = true
+# Disabled 2026-10-26: the feed URL 301-redirects to an HTML landing page
+# on thehackettgroup.com, so every fetch is reported as malformed.
+enabled = false
 
 [[feeds]]
 name = "SupplyChainQuarterly"

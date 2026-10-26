@@ -121,12 +121,12 @@ def _group_averages(rows: list[dict[str, Any]], key: str, value: str) -> list[Gr
     for r in rows:
         groups[r.get(key) or "Unknown"].append(r[value])
     averages = [GroupAverage(name, len(v), sum(v) / len(v)) for name, v in groups.items()]
-    return sorted(averages, key=lambda g: g.average, reverse=True)
+    return sorted(averages, key=lambda g: (-g.average, g.name))
 
 
 def _shares(counts: dict[str, int], total: int) -> list[Share]:
     shares = [Share(name, n, round(100.0 * n / total, 1)) for name, n in counts.items()]
-    return sorted(shares, key=lambda s: s.count, reverse=True)
+    return sorted(shares, key=lambda s: (-s.count, s.name))
 
 
 def build_weekly_stats(rows: list[dict[str, Any]]) -> WeeklyStats:
@@ -141,7 +141,7 @@ def build_weekly_stats(rows: list[dict[str, Any]]) -> WeeklyStats:
         week_start=min(fetched)[:10],
         week_end=max(fetched)[:10],
         source_count=len(source_counts),
-        top_signals=sorted(rows, key=lambda r: r["composite_score"], reverse=True)[:TOP_SIGNALS],
+        top_signals=sorted(rows, key=lambda r: (-r["composite_score"], r["id"]))[:TOP_SIGNALS],
         composite_by_source=_group_averages(rows, "source_name", "composite_score"),
         disruption_by_category=_group_averages(rows, "source_category", "disruption_risk"),
         source_shares=_shares(dict(source_counts), total),

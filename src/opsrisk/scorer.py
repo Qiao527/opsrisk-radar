@@ -6,6 +6,10 @@ from re import Pattern
 from opsrisk.models import ArticleScore
 from opsrisk.signals import is_market_report
 
+# Identifies the scoring logic in stored scores; bump it when rules or
+# weights change so existing articles are rescored.
+SCORER_ID = "rules-v1"
+
 # Each dimension maps keywords to a score contribution.
 # A match in the title is weighted higher than a match in the summary.
 TITLE_WEIGHT = 3.0
