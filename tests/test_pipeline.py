@@ -66,9 +66,7 @@ def test_second_run_does_not_duplicate_articles(project_dir, offline_feeds, caps
 def test_validate_and_reports_succeed_after_run(project_dir, offline_feeds):
     cli.main(["--db", "data/test.db", "run"])
 
-    with pytest.raises(SystemExit) as exit_info:
-        cli.main(["--db", "data/test.db", "validate"])
-    assert exit_info.value.code == 0
+    assert cli.main(["--db", "data/test.db", "validate"]) == 0
 
     cli.main(["--db", "data/test.db", "weekly"])
     cli.main(["--db", "data/test.db", "html"])

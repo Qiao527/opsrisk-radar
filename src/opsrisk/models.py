@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from opsrisk.signals import SeverityCounts
+
 
 @dataclass
 class Article:
@@ -39,17 +41,15 @@ class DailyBrief:
     generated_at: str = ""
 
     @property
-    def top_risks(self) -> list[ScoredArticle]:
+    def ranked(self) -> list[ScoredArticle]:
         return sorted(
             self.articles, key=lambda a: a.score.composite_score, reverse=True
-        )[:5]
-
-    @property
-    def high_risk_count(self) -> int:
-        return sum(1 for a in self.articles if a.score.composite_score >= 7.0)
-
-    @property
-    def medium_risk_count(self) -> int:
-        return sum(
-            1 for a in self.articles if 4.0 <= a.score.composite_score < 7.0
         )
+
+    @property
+    def top_risks(self) -> list[ScoredArticle]:
+        return self.ranked[:5]
+
+    @property
+    def severity(self) -> SeverityCounts:
+        return SeverityCounts.from_scores(a.score.composite_score for a in self.articles)

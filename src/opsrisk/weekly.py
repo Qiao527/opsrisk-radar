@@ -1,19 +1,32 @@
+"""Render the weekly trend report as Markdown."""
+
 from __future__ import annotations
 
-import re
 from datetime import datetime, timezone
 from pathlib import Path
 
 from opsrisk import __version__
 from opsrisk.brief import write_brief
+from opsrisk.database import Database
+from opsrisk.report_data import WeeklyStats, load_weekly_stats
+from opsrisk.signals import severity_label
 
 _BAR_FULL = "\u2588"
 _BAR_EMPTY = "\u2591"
+
+DIMENSIONS = [
+    ("Disruption Risk", "disruption_risk"),
+    ("Business Impact", "business_impact"),
+    ("Strategic Relevance", "strategic_relevance"),
+    ("Actionability", "actionability"),
+    ("Signal Strength", "signal_strength"),
+]
 
 
 # ---------------------------------------------------------------------------
 # ASCII bar helpers
 # ---------------------------------------------------------------------------
+
 
 def _ascii_bar(value: float, max_val: float = 10.0, width: int = 20) -> str:
     """Return a horizontal bar of filled/empty block characters."""
@@ -48,242 +61,109 @@ def _top_signal_card(top: dict) -> list[str]:
         "| Dimension | Score | Bar |",
         "|-----------|-------|-----|",
     ]
-    dims = [
-        ("Disruption Risk", "disruption_risk"),
-        ("Business Impact", "business_impact"),
-        ("Strategic Relevance", "strategic_relevance"),
-        ("Actionability", "actionability"),
-        ("Signal Strength", "signal_strength"),
-    ]
-    for label, key in dims:
+    for label, key in DIMENSIONS:
         val = top.get(key, 0.0)
-        bar = _ascii_bar(val, 10.0)
-        lines.append(f"| {label:<20} | {val:<5.1f} | {bar} |")
+        lines.append(f"| {label:<20} | {val:<5.1f} | {_ascii_bar(val, 10.0)} |")
     lines.append("")
     return lines
-
-
-# ---------------------------------------------------------------------------
-# Risk theme patterns (display-only, not scoring)
-# ---------------------------------------------------------------------------
-
-_THEME_PATTERNS: dict[str, list[re.Pattern[str]]] = {
-    "Tariffs & Trade Policy": [
-        re.compile(r, re.IGNORECASE)
-        for r in [r"\btariff", r"trade\s+war", r"\bsanctions?\b", r"\bembargo\b"]
-    ],
-    "Labor Disruptions": [
-        re.compile(r, re.IGNORECASE)
-        for r in [r"\bstrik", r"labor\s+dispute", r"\blayoff", r"\bunion\b"]
-    ],
-    "Logistics & Shipping": [
-        re.compile(r, re.IGNORECASE)
-        for r in [
-            r"port\s+congestion",
-            r"shipping\s+delay",
-            r"\bfreight",
-            r"\brerouting",
-        ]
-    ],
-    "Supplier & Parts Risk": [
-        re.compile(r, re.IGNORECASE)
-        for r in [r"\bshortage", r"\bbankruptc", r"\brecall", r"\bsupplier"]
-    ],
-    "Geopolitical Conflict": [
-        re.compile(r, re.IGNORECASE)
-        for r in [r"\bwar\b", r"\bconflict\b", r"\bmilitary\b"]
-    ],
-    "Natural Disasters": [
-        re.compile(r, re.IGNORECASE)
-        for r in [
-            r"\bhurricane", r"\bearthquake", r"\bflood",
-            r"\bwildfire", r"\btyphoon",
-        ]
-    ],
-    "Cyber & Security": [
-        re.compile(r, re.IGNORECASE)
-        for r in [r"\bcyberattack", r"\bransomware", r"\bdata\s+breach"]
-    ],
-    "Market & Financial Pressure": [
-        re.compile(r, re.IGNORECASE)
-        for r in [
-            r"\binflation", r"\brecession", r"profit\s+warning",
-            r"margin\s+squeeze", r"\bvolatile",
-        ]
-    ],
-}
-
-
-def _severity_label(score: float) -> str:
-    if score >= 9.0:
-        return "CRITICAL"
-    if score >= 7.0:
-        return "HIGH"
-    if score >= 4.0:
-        return "MEDIUM"
-    return "LOW"
-
-
-def _count_themes(rows: list[dict]) -> dict[str, int]:
-    """Count how many articles in the window match each risk theme."""
-    counts: dict[str, int] = {name: 0 for name in _THEME_PATTERNS}
-    for r in rows:
-        title = r.get("title", "")
-        for theme, patterns in _THEME_PATTERNS.items():
-            if any(p.search(title) for p in patterns):
-                counts[theme] += 1
-    return counts
-
-
-def _avg(values: list[float]) -> float:
-    return sum(values) / len(values)
-
-
-def _source_key(src: str) -> float:
-    return _avg(SOURCES[src])
-
-
-def _category_key(cat: str) -> float:
-    return _avg(CATS[cat])
-
-
-def _theme_key(t: str) -> int:
-    return THEME_COUNTS[t]
-
-
-SOURCES: dict[str, list[float]] = {}
-CATS: dict[str, list[float]] = {}
-THEME_COUNTS: dict[str, int] = {}
 
 
 # ---------------------------------------------------------------------------
 # Report builder
 # ---------------------------------------------------------------------------
 
-def _build_markdown(rows: list[dict], total_sources: int) -> str:
-    if not rows:
-        return (
-            "# OpsRisk Radar — Weekly Trend Report\n\n"
-            "No data available for this period.\n"
-        )
 
-    total = len(rows)
-    med = sum(1 for r in rows if 4.0 <= r["composite_score"] < 7.0)
-    high = sum(1 for r in rows if r["composite_score"] >= 7.0)
-    low = total - med - high
-
-    week_start = min(r.get("fetched_at", "") for r in rows)[:10]
-    week_end = max(r.get("fetched_at", "") for r in rows)[:10]
-
+def render_weekly_markdown(stats: WeeklyStats) -> str:
+    sev = stats.severity
     lines = [
         "# OpsRisk Radar — Weekly Trend Report",
-        f"**{week_start} to {week_end}**",
+        f"**{stats.week_start} to {stats.week_end}**",
         "",
         "## Executive Summary",
         "",
-        f"Scanned **{total}** signal(s) from **{total_sources}** source(s). "
-        f"**{high}** high-risk, **{med}** medium-risk, "
-        f"{low} low-risk signal(s) identified.",
+        f"Scanned **{stats.total}** signal(s) from **{stats.source_count}** source(s). "
+        f"**{sev.high}** high-risk, **{sev.medium}** medium-risk, "
+        f"{sev.low} low-risk signal(s) identified.",
         "",
         "Severity distribution:",
         "",
+        *_severity_bar_chart(sev.high, sev.medium, sev.low, stats.total),
+        "",
+        "## Top Signals",
+        "",
+        "| # | Severity | Signal | Source | Composite |",
+        "|---|----------|--------|--------|-----------|",
     ]
-    lines.extend(_severity_bar_chart(high, med, low, total))
-    lines.append("")
-
-    # Top signals table
-    top5 = sorted(rows, key=lambda r: r["composite_score"], reverse=True)[:5]
-    lines.append("## Top Signals")
-    lines.append("")
-    lines.append("| # | Severity | Signal | Source | Composite |")
-    lines.append("|---|----------|--------|--------|-----------|")
-    for i, r in enumerate(top5, 1):
-        sev = _severity_label(r["composite_score"])
+    for i, r in enumerate(stats.top_signals, 1):
         lines.append(
-            f"| {i} | {sev:<8} | {r['title'][:60]:<60} "
+            f"| {i} | {severity_label(r['composite_score']):<8} | {r['title'][:60]:<60} "
             f"| {r['source_name']:<20} | {r['composite_score']:<5.1f} |"
         )
     lines.append("")
 
-    # Top Risk Signal card
-    if top5:
-        lines.extend(_top_signal_card(top5[0]))
+    if stats.top_signals:
+        lines.extend(_top_signal_card(stats.top_signals[0]))
 
-    # Average composite by source
-    lines.append("## Average Scores by Source")
-    lines.append("")
-    SOURCES.clear()
-    for r in rows:
-        src = r.get("source_name", "Unknown")
-        SOURCES.setdefault(src, []).append(r["composite_score"])
-    lines.append("| Source | Articles | Avg Composite | Trend |")
-    lines.append("|--------|----------|---------------|-------|")
-    for src in sorted(SOURCES, key=_source_key, reverse=True):
-        vals = SOURCES[src]
-        avg = _avg(vals)
-        bar = _ascii_bar(avg, 10.0)
-        lines.append(f"| {src:<30} | {len(vals):<8} | {avg:<6.2f}    | {bar} |")
+    lines += [
+        "## Average Scores by Source",
+        "",
+        "| Source | Articles | Avg Composite | Trend |",
+        "|--------|----------|---------------|-------|",
+    ]
+    for g in stats.composite_by_source:
+        lines.append(
+            f"| {g.name:<30} | {g.count:<8} | {g.average:<6.2f}    | {_ascii_bar(g.average)} |"
+        )
     lines.append("")
 
-    # Average disruption risk by source category
-    lines.append("## Average Disruption Risk by Category")
-    lines.append("")
-    CATS.clear()
-    for r in rows:
-        cat = r.get("source_category", "Unknown")
-        CATS.setdefault(cat, []).append(r["disruption_risk"])
-    lines.append("| Category | Articles | Avg Disruption Risk | Trend |")
-    lines.append("|----------|----------|---------------------|-------|")
-    for cat in sorted(CATS, key=_category_key, reverse=True):
-        vals = CATS[cat]
-        avg = _avg(vals)
-        bar = _ascii_bar(avg, 10.0)
-        lines.append(f"| {cat:<30} | {len(vals):<8} | {avg:<.2f}               | {bar} |")
+    lines += [
+        "## Average Disruption Risk by Category",
+        "",
+        "| Category | Articles | Avg Disruption Risk | Trend |",
+        "|----------|----------|---------------------|-------|",
+    ]
+    for g in stats.disruption_by_category:
+        lines.append(
+            f"| {g.name:<30} | {g.count:<8} | {g.average:<.2f}               "
+            f"| {_ascii_bar(g.average)} |"
+        )
     lines.append("")
 
-    # Source concentration
-    lines.append("## Source Concentration")
-    lines.append("")
-    src_counts: dict[str, int] = {}
-    for r in rows:
-        src = r.get("source_name", "Unknown")
-        src_counts[src] = src_counts.get(src, 0) + 1
-    lines.append("| Source | Articles | % |")
-    lines.append("|--------|----------|---|")
-    for src in sorted(src_counts, key=lambda s: src_counts[s], reverse=True):
-        cnt = src_counts[src]
-        pct = round(100.0 * cnt / total, 1)
-        lines.append(f"| {src:<30} | {cnt:<8} | {pct} |")
+    lines += [
+        "## Source Concentration",
+        "",
+        "| Source | Articles | % |",
+        "|--------|----------|---|",
+    ]
+    for s in stats.source_shares:
+        lines.append(f"| {s.name:<30} | {s.count:<8} | {s.pct} |")
     lines.append("")
 
-    # Risk themes
-    lines.append("## Risk Themes")
-    lines.append("")
-    THEME_COUNTS.clear()
-    THEME_COUNTS.update(_count_themes(rows))
-    lines.append("| Theme | Articles Hit | % of Total | Bar |")
-    lines.append("|-------|-------------|------------|-----|")
-    for theme in sorted(THEME_COUNTS, key=_theme_key, reverse=True):
-        cnt = THEME_COUNTS[theme]
-        if cnt > 0:
-            pct = round(100.0 * cnt / total, 1)
-            bar = _ascii_bar(cnt, total)
-            lines.append(f"| {theme:<30} | {cnt:<11} | {pct:<5.1f}     | {bar} |")
+    lines += [
+        "## Risk Themes",
+        "",
+        "| Theme | Articles Hit | % of Total | Bar |",
+        "|-------|-------------|------------|-----|",
+    ]
+    for t in stats.theme_shares:
+        lines.append(
+            f"| {t.name:<30} | {t.count:<11} | {t.pct:<5.1f}     "
+            f"| {_ascii_bar(t.count, stats.total)} |"
+        )
     lines.append("")
 
-    # Data quality note
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    lines.append("---")
-    lines.append("")
-    lines.append("## Data Quality")
-    lines.append("")
-    lines.append(
+    lines += [
+        "---",
+        "",
+        "## Data Quality",
+        "",
         f"Report generated at {now}. "
         "Run `python -m opsrisk validate` to check database integrity "
-        "(null checks, score ranges, relationship integrity, source concentration)."
-    )
-    lines.append("")
-    lines.append(f"*Generated by OpsRisk Radar v{__version__} — Weekly Trend Analytics*")
+        "(null checks, score ranges, relationship integrity, source concentration).",
+        "",
+        f"*Generated by OpsRisk Radar v{__version__} — Weekly Trend Analytics*",
+    ]
     return "\n".join(lines)
 
 
@@ -291,28 +171,12 @@ def _build_markdown(rows: list[dict], total_sources: int) -> str:
 # Public entry point
 # ---------------------------------------------------------------------------
 
-def generate_weekly_report(db, briefs_dir: Path) -> Path | None:
-    """Query the last 7 days of scored articles and write a weekly report."""
-    cursor = db.conn.execute(
-        """
-        SELECT a.id, a.title, a.source_name, a.source_category,
-               a.fetched_at, s.composite_score, s.disruption_risk,
-               s.business_impact, s.strategic_relevance,
-               s.actionability, s.signal_strength
-        FROM articles a
-        JOIN scores s ON s.article_id = a.id
-        WHERE a.fetched_at >= date('now', '-7 days')
-        ORDER BY a.fetched_at DESC
-        """
-    )
-    rows = [dict(r) for r in cursor.fetchall()]
-    if not rows:
+
+def generate_weekly_report(db: Database, briefs_dir: Path) -> Path | None:
+    """Write the last 7 days of scored articles as a Markdown weekly report."""
+    stats = load_weekly_stats(db)
+    if stats is None:
         print("  No scored articles in the last 7 days.")
         return None
-
-    total_sources = len(set(r["source_name"] for r in rows))
-    md = _build_markdown(rows, total_sources)
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    weekly_dir = briefs_dir / "weekly"
-    path = write_brief(weekly_dir, md, date_str)
-    return path
+    return write_brief(briefs_dir / "weekly", render_weekly_markdown(stats), date_str)

@@ -51,6 +51,7 @@ class ArticleRow(NamedTuple):
     published: str | None
     source_name: str
     source_category: str
+    summary: str
 
 
 class Database:
@@ -113,17 +114,10 @@ class Database:
 
     def get_unscored_articles(self) -> list[ArticleRow]:
         cursor = self.conn.execute(
-            "SELECT id, url, title, published, source_name, source_category "
-            "FROM articles WHERE is_scored = 0"
+            "SELECT id, url, title, published, source_name, source_category, "
+            "COALESCE(summary, '') FROM articles WHERE is_scored = 0"
         )
         return [ArticleRow(*r) for r in cursor.fetchall()]
-
-    def get_article_details(self, article_id: int) -> dict | None:
-        cursor = self.conn.execute(
-            "SELECT * FROM articles WHERE id = ?", (article_id,)
-        )
-        row = cursor.fetchone()
-        return dict(row) if row else None
 
     def save_score(
         self,
@@ -180,6 +174,23 @@ class Database:
             LIMIT ?
             """,
             (since, limit),
+        )
+        return [dict(r) for r in cursor.fetchall()]
+
+    def get_scored_last_days(self, days: int) -> list[dict]:
+        """Scored articles fetched in the last ``days`` days, newest first."""
+        cursor = self.conn.execute(
+            """
+            SELECT a.id, a.title, a.url, a.source_name, a.source_category,
+                   a.fetched_at, s.composite_score, s.disruption_risk,
+                   s.business_impact, s.strategic_relevance,
+                   s.actionability, s.signal_strength
+            FROM articles a
+            JOIN scores s ON s.article_id = a.id
+            WHERE a.fetched_at >= date('now', ?)
+            ORDER BY a.fetched_at DESC
+            """,
+            (f"-{int(days)} days",),
         )
         return [dict(r) for r in cursor.fetchall()]
 

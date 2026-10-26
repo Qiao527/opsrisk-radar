@@ -4,6 +4,8 @@ import re
 from dataclasses import dataclass
 
 from opsrisk.database import Database
+from opsrisk.scorer import MARKET_RESEARCH_SOURCES
+from opsrisk.signals import MEDIUM_THRESHOLD
 
 # ---------------------------------------------------------------------------
 # Display-only pattern matchers (not scoring logic)
@@ -105,13 +107,14 @@ def audit_sources(db: Database) -> list[SourceReport]:
                COUNT(*) as article_count,
                ROUND(AVG(s.composite_score), 2) as avg_composite,
                ROUND(AVG(s.disruption_risk), 2) as avg_disruption_risk,
-               COUNT(CASE WHEN s.composite_score >= 4.0 THEN 1 END) as medium_plus_count,
+               COUNT(CASE WHEN s.composite_score >= ? THEN 1 END) as medium_plus_count,
                ROUND(AVG(s.business_impact), 2) as avg_business_impact
         FROM articles a
         LEFT JOIN scores s ON s.article_id = a.id
         GROUP BY a.source_name
         ORDER BY COUNT(*) DESC
-        """
+        """,
+        (MEDIUM_THRESHOLD,),
     ).fetchall()
 
     reports: list[SourceReport] = []
@@ -160,27 +163,10 @@ def audit_sources(db: Database) -> list[SourceReport]:
             market_report_pct=market_pct,
             earnings_noise_count=earnings_count,
             earnings_noise_pct=earnings_pct,
-            recommendation=_recommend(
-                SourceReport(
-                    name=name,
-                    category=cat,
-                    article_count=count,
-                    avg_composite=avg_comp,
-                    avg_disruption_risk=avg_dis,
-                    medium_plus_count=mplus,
-                    pct_of_total=pct,
-                    market_report_count=market_count,
-                    market_report_pct=market_pct,
-                    earnings_noise_count=earnings_count,
-                    earnings_noise_pct=earnings_pct,
-                    recommendation="",
-                    has_market_research_penalty=False,
-                )
-            ),
-            has_market_research_penalty=(
-                name == "Interact Analysis"
-            ),
+            recommendation="",
+            has_market_research_penalty=name in MARKET_RESEARCH_SOURCES,
         )
+        report.recommendation = _recommend(report)
         reports.append(report)
 
     return reports
@@ -189,13 +175,6 @@ def audit_sources(db: Database) -> list[SourceReport]:
 # ---------------------------------------------------------------------------
 # Formatted output
 # ---------------------------------------------------------------------------
-
-
-_SEVERITY_COLORS = {
-    "keep": "",
-    "review": "",
-    "demote": "",
-}
 
 
 def print_audit(reports: list[SourceReport]) -> None:
