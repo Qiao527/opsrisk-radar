@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "opsrisk-radar"
 dynamic = ["version"]
-description = "Rule-based supply chain and operations risk intelligence pipeline: RSS ingestion, scoring, and daily briefs"
+description = "Supply chain disruption monitoring: RSS ingestion, event-based risk scoring with an optional LLM reviewer, and an evaluated ranking"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -25,6 +25,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+llm = [
+    "anthropic>=2.3",
+]
 dev = [
     "pytest>=8.0",
     "ruff>=0.6",

@@ -16,7 +16,6 @@ from opsrisk.email_digest import generate_email_digest
 from opsrisk.html_report import generate_daily_html, generate_weekly_html
 from opsrisk.log import setup_logging
 from opsrisk.report_data import load_daily_brief
-from opsrisk.scorer import SCORER_ID
 from opsrisk.source_audit import audit_sources, print_audit
 from opsrisk.validate import run_validations
 from opsrisk.weekly import generate_weekly_report
@@ -99,7 +98,7 @@ def _eval_args(p: argparse.ArgumentParser) -> None:
                    help="human: eval/labels.csv; provisional: machine suggestions")
     p.add_argument("--split", choices=["dev", "test", "all"], default="dev")
     p.add_argument("--scorer", action="append", dest="scorers", metavar="NAME",
-                   help=f"Scorer(s) to compare (default: {SCORER_ID}); repeatable")
+                   help="Scorer(s) to compare (default: rules-v1 and rules-v2); repeatable")
     p.add_argument("--final", action="store_true",
                    help="Required to evaluate on the frozen test split; the access is logged")
 
@@ -111,6 +110,7 @@ def _load_eval_articles(args: argparse.Namespace) -> tuple[list[ev.LabeledArticl
 
 
 def _cmd_evaluate(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
+    from opsrisk.llm_scorer import LLMUnavailable
     from opsrisk.scorers import build_scorer
 
     if args.split != "dev" and not args.final:
@@ -134,17 +134,30 @@ def _cmd_evaluate(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int
 
     selected = [a for a in articles if split_ids is None or a.id in split_ids]
     dev = [a for a in articles if dev_ids is None or a.id in dev_ids]
-    names = args.scorers or [SCORER_ID]
-    results = []
+    names = args.scorers or ["rules-v1", "rules-v2"]
+    results, extra = [], {}
     for name in names:
-        results.append(ev.run_scorer(name, build_scorer(name, cfg, dev=dev), selected))
+        try:
+            scorer = build_scorer(name, cfg, dev=dev)
+        except LLMUnavailable as exc:
+            extra[f"{name}"] = f"NOT RUN: {exc}"
+            continue
+        results.append(ev.run_scorer(name, scorer, selected))
+        if usage := getattr(scorer, "usage", None):
+            extra[f"{name} usage"] = usage.summary()
+        if hybrid := getattr(scorer, "hybrid", None):
+            extra[f"{name} routing"] = hybrid.summary()
+    if not results:
+        print("No scorer could be run:", extra)
+        return 1
     if args.split != "dev":
-        ev.log_test_access(names, args.labels, {r.name: r.metrics for r in results})
+        ev.log_test_access([r.name for r in results], args.labels,
+                           {r.name: r.metrics for r in results})
 
     _banner("Scorer evaluation")
     if unlabeled:
         print(f"({unlabeled} rows in {ev.LABELS_CSV} are still unlabeled)\n")
-    print(ev.format_comparison(results, selected, args.split, args.labels))
+    print(ev.format_comparison(results, selected, args.split, args.labels, extra))
     return 0
 
 
@@ -175,7 +188,7 @@ def _cmd_agreement(db: Database, cfg: AppConfig, args: argparse.Namespace) -> in
 def _cmd_run(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
     """Fetch, score and brief, recorded as one row in the ``runs`` table."""
     run_id = db.start_run("run", __version__, pipeline.git_sha(),
-                          pipeline.config_hash(args.config), SCORER_ID)
+                          pipeline.config_hash(args.config), cfg.scoring.scorer)
     stats: dict = {}
     try:
         _banner("Step 1: Fetch feeds")

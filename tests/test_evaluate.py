@@ -132,7 +132,7 @@ def test_test_split_requires_final_and_is_logged(project_dir, capsys):
     assert cli.main(["--db", "data/t.db", "evaluate", "--split", "test", "--final"]) == 0
     assert "Articles: 2 (act 1, watch 0, noise 1)" in capsys.readouterr().out
     log = (project_dir / "eval" / "test_access.jsonl").read_text().splitlines()
-    assert len(log) == 1 and json.loads(log[0])["scorers"] == ["rules-v1"]
+    assert len(log) == 1 and json.loads(log[0])["scorers"] == ["rules-v1", "rules-v2"]
 
 
 def test_edited_test_article_is_detected(project_dir, capsys):
