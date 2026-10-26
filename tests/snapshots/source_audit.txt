@@ -1,0 +1,26 @@
+==========================================================================================
+Source Quality Audit
+==========================================================================================
+
+Source                    Cat             Arts  AvgC AvgDis  M+  %Tot  Mkt%  Ern% Rec       
+------------------------------------------------------------------------------------------
+Port Wire                 port_disruption     2  6.40  8.00   1 33.3%  0.0%  0.0% keep      
+Market Research Co        operations         2  1.43  1.00   0 33.3% 50.0%  0.0% demote    
+Freight Daily             freight_logistics     2  4.03  5.50   1 33.3%  0.0% 50.0% keep      
+
+------------------------------------------------------------------------------------------
+
+keep:   2 source(s)
+  - Port Wire (2 articles, 1 MEDIUM+)
+  - Freight Daily (2 articles, 1 MEDIUM+)
+
+review: 0 source(s)
+
+demote: 1 source(s)
+  - Market Research Co (2 articles) — 50.0% market forecasts, avg disruption 1.0
+
+Recommendation key:
+  keep    — disruption signals detected, keep in core rotation
+  review  — mixed quality, monitor or re-categorize
+  demote  — mostly noise, consider disabling or market_research tier
+
