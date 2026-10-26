@@ -9,8 +9,8 @@
 feeds, find the articles that report an actual interruption to goods,
 capacity or production, rank them, and explain every score.**
 
-**Live dashboard:** https://qiao527.github.io/opsrisk-radar/ *(deployment
-pending: see [Status](#status))*
+**Live dashboard:** https://qiao527.github.io/opsrisk-radar/ (updated daily
+by the scheduled pipeline; first published 2026-10-26)
 
 ![Dashboard: current briefing](docs/images/dashboard-briefing.png)
 
@@ -31,7 +31,7 @@ site that anyone can open without installing anything.
 | Capability | State |
 |------------|-------|
 | Ingestion, storage, scoring, dashboard build | **Implemented and tested** (145 tests; live smoke runs on 2026-10-26) |
-| Scheduled pipeline and Pages deployment | **Implemented**, workflow lint-checked; first deployment needs repository settings (see [docs/automation.md](docs/automation.md)) |
+| Scheduled pipeline and Pages deployment | **Live.** First production run 2026-10-26: 9/9 feeds, 150 articles, all validation checks passed, deployed to Pages |
 | Rule-based scorer rules-v2.1 | **Default.** Evaluated only against machine-suggested labels |
 | LLM and hybrid scorers | **Implemented and tested with mocks; not run against the live API** (no key configured) |
 | Human-labeled evaluation | **Pending**: 0 / 100 rows labeled |
