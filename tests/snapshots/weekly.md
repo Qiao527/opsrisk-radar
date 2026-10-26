@@ -54,8 +54,8 @@ Severity distribution:
 
 | Source | Articles | % |
 |--------|----------|---|
-| Market Research Co             | 2        | 33.3 |
 | Freight Daily                  | 2        | 33.3 |
+| Market Research Co             | 2        | 33.3 |
 | Port Wire                      | 2        | 33.3 |
 
 ## Risk Themes
@@ -63,11 +63,11 @@ Severity distribution:
 | Theme | Articles Hit | % of Total | Bar |
 |-------|-------------|------------|-----|
 | Geopolitical Conflict          | 2           | 33.3      | ███████░░░░░░░░░░░░░ |
-| Tariffs & Trade Policy         | 1           | 16.7      | ███░░░░░░░░░░░░░░░░░ |
 | Labor Disruptions              | 1           | 16.7      | ███░░░░░░░░░░░░░░░░░ |
 | Logistics & Shipping           | 1           | 16.7      | ███░░░░░░░░░░░░░░░░░ |
-| Supplier & Parts Risk          | 1           | 16.7      | ███░░░░░░░░░░░░░░░░░ |
 | Natural Disasters              | 1           | 16.7      | ███░░░░░░░░░░░░░░░░░ |
+| Supplier & Parts Risk          | 1           | 16.7      | ███░░░░░░░░░░░░░░░░░ |
+| Tariffs & Trade Policy         | 1           | 16.7      | ███░░░░░░░░░░░░░░░░░ |
 
 ---
 

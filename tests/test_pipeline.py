@@ -8,8 +8,9 @@ import httpx
 import pytest
 
 import opsrisk.__main__ as cli
+import opsrisk.pipeline as pipeline
 from opsrisk.config import FeedSource, load_config
-from opsrisk.feed import fetch_all_feeds
+from opsrisk.feed import FetchPolicy, fetch_sources
 from tests.conftest import load_fixture, mock_transport
 
 FEED_URL = "https://feeds.test/logistics.xml"
@@ -23,10 +24,10 @@ def offline_feeds(monkeypatch):
     )
     fixture_source = FeedSource(name="Fixture Feed", url=FEED_URL, category="logistics")
 
-    async def fake_fetch_all(_sources):
-        return await fetch_all_feeds([fixture_source], transport=transport)
+    async def fake_fetch(_sources):
+        return await fetch_sources([fixture_source], transport=transport, policy=FetchPolicy())
 
-    monkeypatch.setattr(cli, "fetch_all_feeds", fake_fetch_all)
+    monkeypatch.setattr(pipeline, "fetch_sources", fake_fetch)
 
 
 def test_run_produces_ranked_brief(project_dir, offline_feeds):
@@ -59,7 +60,7 @@ def test_second_run_does_not_duplicate_articles(project_dir, offline_feeds, caps
     capsys.readouterr()
     cli.main(["--db", "data/test.db", "run"])
     out = capsys.readouterr().out
-    assert "Inserted 0 new article(s), refreshed 3 already stored" in out
+    assert "Inserted 0 new article(s), 0 near-duplicate(s), refreshed 3 already stored" in out
     assert "No unscored articles to process." in out
 
 
@@ -73,3 +74,44 @@ def test_validate_and_reports_succeed_after_run(project_dir, offline_feeds):
     assert list((project_dir / "briefs" / "weekly").glob("*.md"))
     assert list((project_dir / "reports" / "daily").glob("*.html"))
     assert list((project_dir / "reports" / "weekly").glob("*.html"))
+
+
+def test_run_is_recorded_with_provenance(project_dir, offline_feeds, capsys):
+    from opsrisk.database import Database
+
+    assert cli.main(["--db", "data/test.db", "run"]) == 0
+    db = Database(project_dir / "data" / "test.db")
+    try:
+        (run,) = db.last_runs()
+        assert run["status"] == "ok"
+        assert run["scorer"] == "rules-v1"
+        assert run["config_hash"]
+        assert run["stats"]["new"] == 3
+        (fetch,) = db.fetches_for_run(run["id"])
+        assert fetch["status"] == "ok" and fetch["entries"] == 3
+        first_run = db.conn.execute("SELECT DISTINCT first_run_id FROM articles").fetchall()
+        assert [r[0] for r in first_run] == [run["id"]]
+    finally:
+        db.close()
+    capsys.readouterr()
+    assert cli.main(["--db", "data/test.db", "status"]) == 0
+    assert "ok" in capsys.readouterr().out
+
+
+def test_run_fails_loudly_when_most_feeds_fail(project_dir, monkeypatch, capsys):
+    transport = mock_transport({})  # every feed 404s
+
+    async def all_down(sources):
+        return await fetch_sources(sources[:3], transport=transport)
+
+    monkeypatch.setattr(pipeline, "fetch_sources", all_down)
+    assert cli.main(["--db", "data/test.db", "run"]) == 2
+    assert "FAILED" in capsys.readouterr().err
+
+    from opsrisk.database import Database
+
+    db = Database(project_dir / "data" / "test.db")
+    try:
+        assert db.last_runs()[0]["status"] == "failed"
+    finally:
+        db.close()
