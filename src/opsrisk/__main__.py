@@ -12,6 +12,7 @@ from opsrisk.brief import render_markdown, write_brief
 from opsrisk.config import AppConfig, load_config
 from opsrisk.database import Database
 from opsrisk.email_digest import generate_email_digest
+from opsrisk.evaluate import LabelError, evaluate, format_report, load_labels, rule_scorer
 from opsrisk.feed import fetch_all_feeds
 from opsrisk.html_report import generate_daily_html, generate_weekly_html
 from opsrisk.report_data import load_daily_brief
@@ -22,6 +23,7 @@ from opsrisk.weekly import generate_weekly_report
 
 DEFAULT_DB = "data/opsrisk.db"
 REPORTS_DIR = Path("reports")
+EVAL_LABELS = Path("eval/labels.csv")
 
 
 def _banner(title: str) -> None:
@@ -143,6 +145,24 @@ def _cmd_source_audit(db: Database, cfg: AppConfig) -> int:
     return 0
 
 
+def _cmd_evaluate(db: Database, cfg: AppConfig, labels: Path = EVAL_LABELS) -> int:
+    try:
+        articles, unlabeled = load_labels(labels)
+    except FileNotFoundError:
+        print(f"Labels file not found: {labels}")
+        return 1
+    except LabelError as exc:
+        print(f"Invalid labels file: {exc}")
+        return 1
+    if not articles:
+        print(f"No labeled rows in {labels} yet ({unlabeled} unlabeled).")
+        return 1
+    report = evaluate(articles, rule_scorer(cfg.scoring.composite_weights), unlabeled)
+    _banner("Scorer evaluation")
+    print(format_report(report))
+    return 0
+
+
 def _cmd_run(db: Database, cfg: AppConfig) -> int:
     steps = [
         ("Step 1: Fetch feeds", _run_fetch),
@@ -170,6 +190,7 @@ COMMANDS: list[tuple[str, str, Command]] = [
     ("html", "Generate HTML reports (daily + weekly)", _cmd_html),
     ("source-audit", "Audit source quality metrics", _cmd_source_audit),
     ("run", "Fetch \u2192 Score \u2192 Brief (full pipeline)", _cmd_run),
+    ("evaluate", "Measure ranking quality against eval/labels.csv", _cmd_evaluate),
 ]
 
 
