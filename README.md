@@ -1,278 +1,189 @@
 # OpsRisk Radar
 
-[![CI](https://github.com/Qiao527/opsrisk-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/Qiao527/opsrisk-radar/actions/workflows/ci.yml) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg) ![License](https://img.shields.io/badge/license-MIT-green) ![Status](https://img.shields.io/badge/status-v1.4-orange)
+[![CI](https://github.com/Qiao527/opsrisk-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/Qiao527/opsrisk-radar/actions/workflows/ci.yml)
+[![Pipeline](https://github.com/Qiao527/opsrisk-radar/actions/workflows/pipeline.yml/badge.svg)](https://github.com/Qiao527/opsrisk-radar/actions/workflows/pipeline.yml)
+![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-**OpsRisk Radar turns scattered supply chain news into ranked operational risk signals.**
+**Supply chain disruption monitoring from public news: ingest trade-press RSS
+feeds, find the articles that report an actual interruption to goods,
+capacity or production, rank them, and explain every score.**
 
-**Supply Chain & Operations Risk Intelligence Brief** — an automated pipeline that collects news from logistics, procurement, and operations technology feeds, scores each article for operational risk using rule-based keyword analysis, and generates a daily Markdown brief.
+**Live dashboard:** https://qiao527.github.io/opsrisk-radar/ *(deployment
+pending: see [Status](#status))*
 
-OpsRisk Radar turns scattered industry news into a ranked, actionable signal feed. It answers the question: *out of everything published today, which stories actually matter for supply chain resilience?*
+![Dashboard: current briefing](docs/images/dashboard-briefing.png)
 
----
+## The problem
 
-## Why This Matters
+An operations team at a manufacturer or shipper sees 150+ trade-press
+headlines a day. Most are earnings, deals, product launches and opinion. A few
+report something that stops goods moving: a port closed by a typhoon, tankers
+attacked in a strait, a vessel detained after a collision, a tariff change
+with an effective date. The useful question is *which of today's stories
+report an interruption, and why should I believe that?*
 
-Supply chain and operations teams are inundated with news — tariff announcements, port congestion updates, supplier disruptions, labor disputes, regulatory changes, market forecasts. The hard part is triage: separating the signal from the noise.
+OpsRisk Radar answers it with a ranked, explained list, published as a static
+site that anyone can open without installing anything.
 
-OpsRisk Radar automates that triage. It ingests RSS feeds from logistics, procurement, and operations publications, scores each article across five risk dimensions, and produces a ranked daily brief. A logistics manager scanning 200 articles a week can instead read a 5-entry brief that surfaces genuine disruptions before they escalate.
+## Status
 
----
+| Capability | State |
+|------------|-------|
+| Ingestion, storage, scoring, dashboard build | **Implemented and tested** (145 tests; live smoke runs on 2026-10-26) |
+| Scheduled pipeline and Pages deployment | **Implemented**, workflow lint-checked; first deployment needs repository settings (see [docs/automation.md](docs/automation.md)) |
+| Rule-based scorer rules-v2.1 | **Default.** Evaluated only against machine-suggested labels |
+| LLM and hybrid scorers | **Implemented and tested with mocks; not run against the live API** (no key configured) |
+| Human-labeled evaluation | **Pending**: 0 / 100 rows labeled |
 
-## How It Works
+## How it works
 
 ```mermaid
 flowchart LR
-    A[RSS Feeds] --> B[(SQLite)]
-    B --> C[Risk Scoring]
-    C --> D[Daily Brief]
-    C --> E[Weekly Report]
-    B --> F[Validation]
+    A[9 trade-press<br/>RSS feeds] --> B[Fetch<br/>retries, timeouts]
+    B --> C[Normalize<br/>dedupe, canonical URL, UTC]
+    C --> D[(SQLite<br/>history + provenance)]
+    D --> E[Score<br/>rules-v2.1 / hybrid]
+    E --> D
+    D --> F[Static site<br/>GitHub Pages]
+    G[Labeled eval set<br/>frozen test split] --> H[Evaluate]
+    E -.-> H
 ```
 
-See [`docs/architecture.md`](docs/architecture.md) for a detailed breakdown of each stage.
+1. **Ingest.** Feeds are fetched concurrently with timeouts and retries
+   (timeouts, 429, 5xx; `Retry-After` honored). Each feed's outcome is
+   recorded, and a run fails loudly if fewer than half the feeds succeed.
+2. **Normalize and store.** Entities and WordPress boilerplate are stripped,
+   URLs canonicalized (tracking parameters, `www`, trailing slashes), times
+   converted to UTC. A story first seen keeps its first-seen time; near-identical
+   headlines from other sources are linked as duplicates. Schema changes are
+   versioned migrations. Every run records version, git commit, config hash and
+   per-feed results.
+3. **Score.** The default scorer classifies the **event** (closure, strike,
+   attack, accident, outage, severe weather, congestion, dated trade measure),
+   its **status** (ongoing, resolved, speculative) and the **article type**
+   (earnings, deal, opinion...), then maps the class to a severity band. Every
+   score stores the matched evidence and a reason. An optional hybrid sends
+   the ~29% of articles that are not clear noise to Claude, which must quote
+   the article verbatim; any failure falls back to the rule score.
+4. **Publish.** The dashboard is rebuilt from the full history each day:
+   briefing, ranked events with filters and search, 30 days of daily
+   snapshots, weekly summaries, pipeline status, and the method. Stale or
+   non-live data is labeled on the page.
 
-1. **Fetch** (`feed.py`) — ingests RSS feeds concurrently from logistics, procurement, and operations sources
-2. **Store** (`database.py`) — saves articles to SQLite with deduplication by URL and tracks scoring state
-3. **Score** (`scorer.py`) — evaluates each article across 5 risk dimensions, applies calibration penalties
-4. **Brief** (`brief.py`) — assembles top signals into a structured Markdown daily brief
-5. **Validate** (`validate.py`) — runs integrity checks on the database
-6. **Weekly** (`weekly.py`) — generates a trend report with aggregations and ASCII bar charts
+![Score explanation](docs/images/dashboard-explanation.png)
 
-### Sample Output
+Details: [architecture](docs/architecture.md) ·
+[scoring methodology](docs/methodology.md) ·
+[evaluation](docs/evaluation.md) ·
+[labeling guide](docs/labeling_guide.md) ·
+[automation](docs/automation.md)
 
-After a successful run, the brief's top signal is a ranked MEDIUM-severity story:
+## Engineering highlights
 
-```
-| # | Severity | Signal                                                  | Source            |
-|---|----------|---------------------------------------------------------|-------------------|
-| 1 | MEDIUM   | Toyota Suppliers Warn of Parts Shortages Tied to Iran War | Transport Topics |
+- **Diagnosed a structural calibration bug instead of moving thresholds.** The
+  original scorer averaged five keyword dimensions, so a pure disruption could
+  score at most 5.05 and never reach HIGH; on 150 live articles all were LOW
+  and "port operator *strikes* deal" outranked "typhoon closes Taiwan ports".
+  The replacement scores the event and its status.
+- **Evaluation built to resist self-deception.** Written operational labeling
+  guide; temporal dev/test split frozen before the new scorers existed, with a
+  content fingerprint and a logged record of every test-set look; tie-aware
+  ranking metrics (verified against brute-force enumeration) with bootstrap
+  intervals; a source-only baseline to detect source leakage; machine-suggested
+  labels kept separate from human labels and stamped "provisional" on every
+  report.
+- **LLM output treated as untrusted input.** Structured outputs, verbatim
+  evidence checks with downgrade on unsupported claims, severity-band
+  consistency, caching by model and prompt version, per-run call budget, cost
+  tracking, and a rule-based fallback.
+- **Operable in production.** Idempotent incremental runs, transactional
+  ingest, persistent history across scheduled runs (release-asset storage with
+  rollback copy), explicit failure exit codes, failure issues, schedule
+  keepalive, staleness shown to readers.
 
-Score breakdown: D10 B1 S1 A1 Sig1 | Composite: 5.0/10
-```
+## Results so far
 
-The full daily brief with all scored articles and per-dimension breakdowns is written to `briefs/YYYY-MM-DD.md`.
+On the frozen 58-article test split, against **machine-suggested** labels
+(not human judgments; same model that wrote the rules; read the test articles
+while labeling):
 
----
+| | rules-v1 | rules-v2.1 | random order |
+|---|---:|---:|---:|
+| nDCG@10 | 0.57 | 0.99 | 0.24 |
+| Recall@10, act | 0.50 | 1.00 | 0.17 |
+| Act articles rated HIGH+ | 0 / 4 | 4 / 4 | — |
+| Non-act articles rated HIGH+ | 0 | 2 | — |
 
-## Quick Start
+These numbers show the calibration defect is fixed; they are **not** an
+accuracy claim. See [docs/evaluation.md](docs/evaluation.md) for the
+false-positive analysis and what remains before results are citable.
+
+## Run it locally
 
 ```bash
 git clone https://github.com/Qiao527/opsrisk-radar.git && cd opsrisk-radar
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e .
+pip install -e ".[dev]"            # add ,llm for the optional LLM scorer
+
+python -m opsrisk run              # fetch → score → daily brief
+python -m opsrisk validate         # data quality checks
+python -m opsrisk site --out site  # build and check the dashboard
+python -m http.server -d site      # open http://localhost:8000
 ```
 
-Run the pipeline or individual stages:
+| Command | Purpose |
+|---------|---------|
+| `run` / `fetch` / `score` | Pipeline, or one stage |
+| `status` | Recent runs with feed success and commit |
+| `validate` | Data quality checks (exit 1 on failure) |
+| `site` | Build and validate the static dashboard |
+| `evaluate` | Compare scorers on the labeled set (`--split test --final` for the frozen split) |
+| `agreement` | Cohen's κ between label sources |
+| `brief`, `weekly`, `html`, `source-audit` | Markdown, HTML and email reports; per-source metrics |
+
+Global options: `--db`, `--config`, `--log-format json`, `--min-ok-feeds`.
+
+## Tests and quality
 
 ```bash
-python -m opsrisk run        # Full pipeline: fetch + score + brief
-python -m opsrisk validate   # Data quality checks
-python -m opsrisk weekly     # Weekly trend report
-python -m opsrisk html       # HTML reports (daily + weekly)
-python -m opsrisk source-audit  # Source quality audit
-```
-
-All available commands:
-
-| Command | Action |
-|---------|--------|
-| `opsrisk fetch` | Fetch RSS feeds into the database |
-| `opsrisk score` | Score unscored articles |
-| `opsrisk brief` | Generate today's daily brief |
-| `opsrisk validate` | Run data quality checks on the database |
-| `opsrisk weekly` | Generate a weekly trend report |
-| `opsrisk html` | Generate HTML reports (daily + weekly) |
-| `opsrisk source-audit` | Audit source quality and signal metrics |
-| `opsrisk run` | Run the full pipeline (fetch + score + brief) |
-| `opsrisk evaluate` | Measure ranking quality against hand labels in [`eval/labels.csv`](eval/README.md) |
-
-The daily brief appears in `briefs/YYYY-MM-DD.md`. A sample is at [`briefs/2026-04-29.md`](briefs/2026-04-29.md).
-Weekly reports go to `briefs/weekly/YYYY-MM-DD.md`.
-HTML reports go to `reports/daily/YYYY-MM-DD.html` and `reports/weekly/YYYY-MM-DD.html`.
-
-### Validation
-
-Run `scripts/check.sh` to validate the pipeline end-to-end:
-
-```bash
-./scripts/check.sh
-```
-
-The script:
-1. Runs the full pipeline (`fetch` + `score` + `brief`)
-2. Confirms a brief file was generated
-3. Confirms the brief contains the project name
-4. Confirms the SQLite database exists at `data/opsrisk.db`
-
-It exits with a non-zero code on any failure, making it suitable for automated environments.
-
-### Data Quality
-
-Run `python -m opsrisk validate` to check database integrity after the pipeline completes:
-
-```bash
-python -m opsrisk validate
-```
-
-The command runs four groups of checks and exits with code 1 on any failure:
-
-1. **Articles** — confirms `url`, `title`, `source_name`, `source_category`, and `fetched_at` are never null or empty
-2. **Scores** — confirms `composite_score` and all five dimension scores are within [0, 10], and `scored_at` is never null
-3. **Relationships** — confirms no orphaned score rows and all scored articles have matching scores
-4. **Source concentration** — prints article count by source and warns if any source exceeds 70% dominance
-
-See [`docs/data_quality.md`](docs/data_quality.md) for a full description of each check.
-
-### Weekly Trend Analytics
-
-Run `python -m opsrisk weekly` to generate a weekly trend report under `briefs/weekly/YYYY-MM-DD.md`:
-
-```bash
-python -m opsrisk weekly
-```
-
-The report includes the top 5 signals of the week, average scores by source and category, source concentration, and a risk theme frequency analysis. See [`docs/weekly_analytics.md`](docs/weekly_analytics.md) for full details.
-
-### HTML Reports
-
-Run `python -m opsrisk html` to generate self-contained HTML versions of the daily brief and weekly trend report:
-
-```bash
-python -m opsrisk html
-```
-
-Output files:
-- `reports/daily/YYYY-MM-DD.html` -- daily brief with severity cards, top signals table, and per-article score bars
-- `reports/weekly/YYYY-MM-DD.html` -- weekly trend report with source averages, category breakdowns, and risk themes
-
-Both files are self-contained with inline CSS -- no external assets needed. See [`docs/html_reports.md`](docs/html_reports.md) for the full output format description.
-
-### Automation
-
-OpsRisk Radar includes GitHub Actions workflows for scheduled report generation. See [`docs/automation.md`](docs/automation.md) for details on the daily and weekly schedules, manual triggering, and artifact downloads.
-
-Optional email delivery via Resend API is available. Set `RESEND_API_KEY`, `REPORT_EMAIL_TO`, and `REPORT_EMAIL_FROM` as GitHub Secrets to enable it. The email step fails gracefully if secrets are not configured.
-
-### Tests
-
-```bash
-pip install -e ".[dev]"
-pytest              # unit + end-to-end tests, no network needed
+pytest                 # 145 tests, no network
 ruff check src tests scripts
 ```
 
-The end-to-end tests run the real CLI (`run`, `validate`, `weekly`, `html`) against a fixture RSS feed served by `httpx.MockTransport`, so they are fast and deterministic. CI runs lint and tests on Python 3.11, 3.12 and 3.13 for every push and pull request.
+Covered: RSS parsing and malformed feeds, retries and network failures,
+migrations, idempotency and rollback, deduplication, scorer specifications
+per labeling-guide rule, LLM validation/caching/fallback with a fake client,
+metric correctness under ties, evaluation guards (test-split access,
+fingerprint, labeler requirement), CLI end to end on a fixture feed, report
+snapshots, and dashboard build validation. CI runs on Python 3.11–3.13, builds
+and installs the wheel in a clean environment, and runs `pip-audit` and
+`bandit`.
 
-### Requirements
+## Limitations
 
-- Python 3.11+ (uses `tomllib` from stdlib)
-- Dependencies: `feedparser`, `httpx`
+- Headlines and summaries only; scores describe what an article says, not
+  verified facts.
+- Known rule failure modes: strategic plant closures and event-driven analysis
+  pieces can score HIGH; interruptions mentioned only in a summary stay MEDIUM.
+- 9 enabled English-language trade feeds. Spend Matters is disabled because
+  its feed URL now redirects to an HTML page; Interact Analysis was disabled
+  earlier as mostly market research.
+- Evaluation set: 100 articles from one fetch, 6 suggested act cases; human
+  labels pending.
+- The schedule keepalive is a mitigation for GitHub's 60-day inactivity
+  disable, not a guarantee; the page's stale banner is the backstop.
 
----
-
-## Project Structure
+## Project layout
 
 ```
-opsrisk-radar/
-├── docs/                 # Documentation
-│   ├── architecture.md    # Pipeline stages and module responsibilities
-│   ├── methodology.md     # Scoring dimensions, weights, calibration
-│   ├── data_quality.md    # Validation checks and diagnostics
-│   └── weekly_analytics.md # Weekly trend report sections
-├── src/opsrisk/          # Core library
-│   ├── config.py         # TOML config loader
-│   ├── models.py         # Data models (Article, Score, Brief)
-│   ├── database.py       # SQLite schema and operations
-│   ├── feed.py           # RSS feed fetching and parsing
-│   ├── scorer.py         # Rule-based risk scoring engine
-│   ├── signals.py        # Shared rules: severity bands, risk themes, market forecasts
-│   ├── report_data.py    # Daily article window and weekly aggregations
-│   ├── brief.py          # Daily Markdown brief
-│   ├── weekly.py         # Weekly Markdown report
-│   ├── html_report.py    # Daily and weekly HTML reports
-│   ├── email_digest.py   # Compact email digest
-│   ├── assets/           # Report stylesheets
-│   ├── validate.py       # Data quality validation
-│   ├── source_audit.py   # Per-source signal quality metrics
-│   └── __main__.py       # CLI entry point
-├── tests/                # pytest suite with a fixture RSS feed
-├── config/
-│   └── sources.toml      # RSS feed list and scoring weights
-├── data/                 # SQLite database (auto-created)
-├── briefs/               # Generated daily briefs
-├── scripts/run.sh         # Convenience pipeline runner
-└── scripts/check.sh       # End-to-end validation script
+src/opsrisk/       pipeline, scoring, evaluation, reporting, site builder
+src/opsrisk/assets/site/   dashboard (HTML, CSS, vanilla JS)
+config/sources.toml        feeds, scorer, LLM settings
+eval/              labels, machine suggestions, frozen split, test-access log
+docs/              architecture, methodology, evaluation, labeling guide, automation
+tests/             pytest suite, fixture feed, report snapshots
 ```
-
----
-
-## Scoring Methodology
-
-Scoring is interpretable and fully rule-based. Each article is evaluated across five dimensions using keyword pattern matching against titles and summaries. A match in the title counts 3x more than a match in the summary. See [`docs/methodology.md`](docs/methodology.md) for the full methodology, including calibration details and limitations.
-
-| Dimension | Weight | What It Measures | Example Keywords |
-|-----------|--------|------------------|------------------|
-| Disruption Risk | 45% | Likelihood of operational disruption | shortage, strike, war, port congestion, factory shutdown, recall, sanctions, shipping delay |
-| Business Impact | 25% | Financial magnitude | Dollar amounts, revenue, profit, loss, tariff, bankruptcy, inflation |
-| Actionability | 15% | Regulatory or deadline-driven urgency | compliance, deadline, ban, sanctions, audit, executive order |
-| Signal Strength | 10% | Specificity and authority | named entities (China, US, EU), percentages, dollar figures |
-| Strategic Relevance | 5% | Long-term alignment | reshoring, automation, sustainability, ESG, supply chain resilience |
-
-The composite score is a weighted average on a 1-10 scale. Severity thresholds:
-- **CRITICAL** >= 9.0
-- **HIGH** >= 7.0
-- **MEDIUM** >= 4.0
-- **LOW** < 4.0
-
-<details>
-<summary>Calibration: A Concrete Example</summary>
-
-Early pipeline runs revealed a calibration problem — market-size forecasts dominated the rankings because their dollar figures inflated `Business Impact` scores.
-
-**Before calibration**, the #1 article was:
-> *"Industrial robot component revenues to exceed $9.3 billion by 2025"*
-> Composite: 3.9 / Disruption Risk: 1.0
-
-This is a market projection, not an operational risk. Meanwhile, a genuinely disruptive story was buried:
-
-> *"Toyota Suppliers Warn of Parts Shortages Tied to Iran War"*
-> Composite: 1.6 / Disruption Risk: 3.0
-
-The fix involved three changes while keeping scoring fully rule-based:
-
-1. **Added ~25 missing disruption keywords** — `war`, `conflict`, `parts shortage`, `shipping delay`, `labor dispute`, `factory shutdown`, `recall`, `rerouting`, `tariff shock`, and more
-2. **Added market-report detection** — articles matching forward-projection language ("CAGR", "market worth", "revenue to exceed", "soar to $X billion") have their `Business Impact` de-weighted by 70%
-3. **Applied source-level penalty** — Interact Analysis contributes 60% of articles, nearly all long-term market research; their `Business Impact` receives a 40% reduction
-
-**After calibration:**
-
-> *"Toyota Suppliers Warn of Parts Shortages Tied to Iran War"*
-> Composite: **5.05** / Disruption Risk: **10.0** — ranks #1 (MEDIUM)
-
-> *"Industrial robot component revenues to exceed $9.3 billion"*
-> Composite: **1.68** — dropped from #1 to #78 (LOW)
-
-The severity distribution across 202 articles: 201 LOW, 1 MEDIUM, 0 HIGH, 0 CRITICAL. The calibration raised genuinely disruptive signals without inflating everything.
-
-</details>
-
----
-
-## Current Limitations
-
-- **RSS source quality varies** — the pipeline is only as good as its feeds. A feed full of press releases and market forecasts dilutes the signal. Adding better disruption-oriented sources is an ongoing task.
-- **Rule-based scoring is interpretable but imperfect** — keyword patterns miss nuance. "Iran war slows growth" scores lower than "Toyota Suppliers Warn of Parts Shortages" because the title contains fewer disruption patterns, even though both cover the same event.
-- **No LLM scoring in v1** — the architecture supports it, but v1 deliberately avoids LLM inference costs and latency. All scoring is deterministic pattern matching.
-
----
-
-## Roadmap
-
-- **LLM-assisted business implication summaries** — use a language model to write a one-paragraph "why this matters" for top signals, rather than just showing the raw summary
-- **Simple dashboard** — lightweight web UI for browsing and filtering scored articles
-- **Better disruption-oriented sources** — add freight rate indexes, customs bulletins, port authority alerts, and supplier-risk databases
-
----
 
 ## License
 
