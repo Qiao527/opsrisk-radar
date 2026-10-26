@@ -191,8 +191,11 @@ def load_split(name: str, path: Path = SPLITS_JSON,
 
 def log_test_access(scorers: Sequence[str], label_source: str,
                     results: dict[str, dict[str, Any]], path: Path = TEST_ACCESS_LOG) -> None:
+    from opsrisk.pipeline import git_sha
+
     entry = {
         "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "git_sha": git_sha(),
         "scorers": list(scorers),
         "labels": label_source,
         "headline": {name: {k: r.get(k) for k in ("ndcg@10", "recall@10_act", "p@10_act")}

@@ -17,9 +17,11 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from opsrisk.config import AppConfig, FeedSource
-from opsrisk.database import Database, IngestStats
+from opsrisk.database import ArticleRow, Database, IngestStats
 from opsrisk.feed import FeedResult, fetch_sources
-from opsrisk.scorer import SCORER_ID, make_article_score
+from opsrisk.models import ArticleScore
+from opsrisk.risk_rules import assess
+from opsrisk.scorer import make_article_score
 
 log = logging.getLogger(__name__)
 
@@ -99,18 +101,57 @@ def fetch(db: Database, cfg: AppConfig, run_id: int | None = None,
     return summary
 
 
+class ArticleScorer:
+    """Scores one article with the configured scorer.
+
+    The five v1 keyword dimensions are always computed and stored as
+    supporting signals; the composite (which sets rank and severity) comes
+    from the configured scorer, together with an explanation in ``detail``.
+    """
+
+    def __init__(self, cfg: AppConfig) -> None:
+        self.cfg = cfg
+        self.name = cfg.scoring.scorer
+        self.hybrid = None
+        if self.name == "hybrid-v1":
+            from opsrisk.hybrid import HybridScorer
+            from opsrisk.llm_scorer import LLMCache, LLMScorer
+
+            cache = LLMCache(Path(cfg.data_dir) / "llm_cache.db")
+            self.hybrid = HybridScorer(LLMScorer(model=cfg.llm.model, cache=cache,
+                                                 max_calls=cfg.llm.max_calls_per_run))
+        elif self.name not in {"rules-v1", "rules-v2"}:
+            raise PipelineError(f"unknown scorer {self.name!r} in config")
+
+    def __call__(self, row: ArticleRow) -> tuple[ArticleScore, str, dict]:
+        base = make_article_score(row.id, row.title, row.summary,
+                                  self.cfg.scoring.composite_weights, row.source_name)
+        if self.name == "rules-v1":
+            return base, "rules-v1", {"scorer": "rules-v1"}
+        if self.hybrid is not None:
+            result = self.hybrid.score(row.title, row.summary)
+            base.composite_score = result.score
+            fell_back = str(result.detail.get("llm", "")).startswith("fallback")
+            return base, "rules-v2" if fell_back else "hybrid-v1", result.detail
+        assessment = assess(row.title, row.summary)
+        base.composite_score = assessment.score
+        return base, "rules-v2", assessment.as_detail()
+
+
 def score(db: Database, cfg: AppConfig) -> int:
-    """Score every article that is new, changed, or scored by an older scorer."""
-    pending = db.get_unscored_articles(scorer=SCORER_ID)
+    """Score every article that is new, changed, or scored by a different scorer."""
+    scorer = ArticleScorer(cfg)
+    pending = db.get_unscored_articles(scorer=scorer.name)
     if not pending:
         print("No unscored articles to process.")
         return 0
-    print(f"Scoring {len(pending)} article(s)...")
+    print(f"Scoring {len(pending)} article(s) with {scorer.name}...")
     for row in pending:
-        s = make_article_score(row.id, row.title, row.summary,
-                               cfg.scoring.composite_weights, row.source_name)
+        s, scorer_id, detail = scorer(row)
         db.save_score(s.article_id, s.disruption_risk, s.business_impact,
                       s.strategic_relevance, s.actionability, s.signal_strength,
-                      s.composite_score, scorer=SCORER_ID)
+                      s.composite_score, scorer=scorer_id, detail=detail)
     print(f"  Scored {len(pending)} article(s)")
+    if scorer.hybrid is not None:
+        print(f"  {scorer.hybrid.summary()}; LLM usage: {scorer.hybrid.llm.usage.summary()}")
     return len(pending)

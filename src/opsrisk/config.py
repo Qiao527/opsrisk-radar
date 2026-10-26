@@ -15,6 +15,8 @@ class FeedSource:
 
 @dataclass
 class ScoringConfig:
+    # Scorer used by the pipeline: "rules-v1", "rules-v2" or "hybrid-v1".
+    scorer: str = "rules-v2"
     composite_weights: dict[str, float] = field(
         default_factory=lambda: {
             "disruption_risk": 0.30,
@@ -27,9 +29,16 @@ class ScoringConfig:
 
 
 @dataclass
+class LLMConfig:
+    model: str = "claude-opus-5-5"
+    max_calls_per_run: int = 200
+
+
+@dataclass
 class AppConfig:
     feeds: list[FeedSource] = field(default_factory=list)
     scoring: ScoringConfig = field(default_factory=ScoringConfig)
+    llm: LLMConfig = field(default_factory=LLMConfig)
     data_dir: Path = Path("data")
     briefs_dir: Path = Path("briefs")
 
@@ -45,9 +54,16 @@ def load_config(path: Path | None = None) -> AppConfig:
 
     if "scoring" in raw:
         config.scoring = ScoringConfig(
+            scorer=raw["scoring"].get("scorer", config.scoring.scorer),
             composite_weights=raw["scoring"].get(
                 "composite_weights", config.scoring.composite_weights
-            )
+            ),
+        )
+    if "llm" in raw:
+        config.llm = LLMConfig(
+            model=raw["llm"].get("model", config.llm.model),
+            max_calls_per_run=int(raw["llm"].get("max_calls_per_run",
+                                                 config.llm.max_calls_per_run)),
         )
 
     for entry in raw.get("feeds", []):
