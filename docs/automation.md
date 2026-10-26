@@ -1,123 +1,62 @@
-# Automated Report Generation
+# Automation and deployment
 
-OpsRisk Radar uses GitHub Actions to generate reports on a schedule and make them available as downloadable artifacts.
+Two workflows:
 
-## Workflows
+| Workflow | Trigger | Does |
+|----------|---------|------|
+| `CI` (`ci.yml`) | Push to main, every pull request | Lint and tests on Python 3.11–3.13; build sdist and wheel, `twine check`, install the wheel in a clean venv and build a site; `pip-audit` and `bandit` |
+| `Pipeline` (`pipeline.yml`) | Daily 11:17 UTC, manual | Restore DB → fetch and score → validate → build and check site → save DB → deploy to GitHub Pages |
 
-### Daily Brief
+## Pipeline steps
 
-- **File:** `.github/workflows/daily-brief.yml`
-- **Schedule:** Weekdays (Monday through Friday) at 12:00 UTC (7:00 AM EST / 8:00 AM EDT)
-- **Triggers:** Scheduled cron + manual `workflow_dispatch`
+1. **Restore the database** from the `opsrisk.db.gz` asset of the
+   `pipeline-data` release. If the release exists but the download fails, the
+   run fails: it never silently starts an empty history. The very first run
+   must be started manually with `allow_fresh_db: true`.
+2. **Fetch and score** with JSON logs. The run fails (exit 2) when fewer than
+   half of the feeds succeed.
+3. **Validate** the database (`opsrisk validate`); any failed check stops the
+   run before anything is published.
+4. **Build and check the site** (`opsrisk site`): ranking, severity/score
+   consistency, https links and history index are verified.
+5. **Save the database** back to the release, keeping the previous copy as
+   `opsrisk.prev.db.gz`.
+6. **Deploy** the site with `actions/deploy-pages`.
+7. **On any failure**, open (or comment on) a "Scheduled pipeline failing"
+   issue.
 
-Steps:
-1. Checkout the repository
-2. Set up Python 3.12 with pip cache
-3. Install the package
-4. Run the full pipeline: `python -m opsrisk run`
-5. Validate the database: `python -m opsrisk validate`
-6. Generate HTML reports: `python -m opsrisk html`
-7. Upload artifacts:
-   - `reports/daily/*.html` as `daily-reports` (7-day retention)
-   - `reports/weekly/*.html` as `daily-weekly-reports` (7-day retention, if generated)
-8. Send email digest (if secrets configured): sends the latest `reports/daily/*-email.html` via Resend API
+The database is stored as a release asset rather than committed, so the git
+history does not grow by a binary file every day, and rather than in the
+Actions cache, which can be evicted.
 
-### Weekly Brief
+Each job has only the permissions it needs: `contents: write` and
+`actions: write` for the pipeline job (release asset, keepalive),
+`pages: write` and `id-token: write` for deployment, `issues: write` for the
+failure report.
 
-- **File:** `.github/workflows/weekly-brief.yml`
-- **Schedule:** Mondays at 12:30 UTC (7:30 AM EST / 8:30 AM EDT)
-- **Triggers:** Scheduled cron + manual `workflow_dispatch`
+## Scheduled-workflow limitations
 
-Steps:
-1. Checkout the repository
-2. Set up Python 3.12 with pip cache
-3. Install the package
-4. Run the full pipeline: `python -m opsrisk run`
-5. Validate the database: `python -m opsrisk validate`
-6. Generate the weekly Markdown report: `python -m opsrisk weekly`
-7. Generate HTML reports: `python -m opsrisk html`
-8. Upload artifacts:
-   - `reports/weekly/*.html` and `reports/weekly/*.md` as `weekly-reports` (14-day retention)
-9. Send weekly report email (if secrets configured): sends the latest `reports/weekly/*.html` via Resend API
+- GitHub **disables scheduled workflows in public repositories after 60 days
+  without repository activity**. This happened to the previous Daily/Weekly
+  Brief workflows (last run 2026-06-29). The pipeline calls the "enable
+  workflow" API on every run to keep the schedule alive. This is a mitigation,
+  not a guarantee; if it lapses, re-enable the workflow in the Actions tab.
+- Scheduled runs can start late or be dropped under load. The dashboard
+  computes data age itself and shows a stale banner after 36 hours, so a
+  stopped pipeline is visible to readers.
 
-## Running Manually
+## One-time setup
 
-Both workflows support manual triggering from the GitHub UI:
+1. Settings → Pages → Source: **GitHub Actions**.
+2. Actions → Pipeline → Run workflow, with `allow_fresh_db` checked.
+3. Optional email digest: secrets `RESEND_API_KEY`, `REPORT_EMAIL_TO`,
+   `REPORT_EMAIL_FROM`.
+4. Optional hybrid scoring: secret `ANTHROPIC_API_KEY`, pass it to the
+   "Fetch and score" step, and set `[scoring] scorer = "hybrid-v1"`. This
+   incurs API cost; see [methodology.md](methodology.md#cost-and-latency).
 
-1. Navigate to your repository on GitHub
-2. Click the **Actions** tab
-3. Select the **Daily Brief** or **Weekly Brief** workflow
-4. Click **Run workflow** (dropdown on the right)
-5. Select the branch and click **Run workflow**
+## Rollback
 
-The workflow starts immediately and artifacts are available when it finishes.
-
-## Downloading Artifacts
-
-After a workflow run completes:
-
-1. Open the workflow run page (from the Actions tab)
-2. Scroll to the **Artifacts** section at the bottom
-3. Click the artifact name (`daily-reports`, `daily-weekly-reports`, or `weekly-reports`) to download a ZIP archive
-4. Extract the ZIP to view the HTML reports
-
-Artifacts are retained for 7 days (daily) or 14 days (weekly). Download them promptly or set up a downstream pipeline for longer retention.
-
-## Email Delivery (Optional)
-
-Reports can be sent by email using the Resend API. The script uses only Python stdlib -- no additional dependencies.
-
-### Send Script
-
-**File:** `scripts/send_report_email.py`
-
-```bash
-python scripts/send_report_email.py reports/daily/2026-04-29-email.html
-python scripts/send_report_email.py reports/weekly/2026-04-29.html
-```
-
-The script infers daily vs weekly from the file path and extracts the date from the filename. It reads the HTML file and sends it as the email body.
-
-### Required Secrets
-
-To enable email delivery, add these secrets in **Settings > Secrets and variables > Actions**:
-
-| Secret | Example | Purpose |
-|--------|---------|---------|
-| `RESEND_API_KEY` | `re_123abc...` | Resend.com API key |
-| `REPORT_EMAIL_TO` | `team@company.com` | Recipient email address |
-| `REPORT_EMAIL_FROM` | `OpsRisk Radar <reports@yourdomain.com>` | Sender email address |
-
-### Setup Steps
-
-1. Sign up at [resend.com](https://resend.com) and verify a domain
-2. Create an API key in the Resend dashboard
-3. Add the three secrets to your GitHub repository
-4. Email delivery activates automatically on the next scheduled run
-
-The email step uses `continue-on-error: true`, so the workflow succeeds even if secrets are not yet configured.
-
-### Local Testing (without sending)
-
-The script fails clearly when required env vars are missing:
-
-```bash
-# Missing file path
-python scripts/send_report_email.py
-# ERROR: Missing report file path.
-
-# Missing env vars
-python scripts/send_report_email.py reports/daily/2026-04-29-email.html
-# ERROR: Missing required environment variable(s): RESEND_API_KEY, REPORT_EMAIL_TO, REPORT_EMAIL_FROM
-```
-
-## Local Testing
-
-You can test the same steps locally before they run on GitHub Actions:
-
-```bash
-python -m opsrisk run
-python -m opsrisk validate
-python -m opsrisk weekly    # weekly only
-python -m opsrisk html
-```
+Download `opsrisk.prev.db.gz` from the `pipeline-data` release and upload it as
+`opsrisk.db.gz` (`gh release upload pipeline-data opsrisk.db.gz --clobber`),
+then re-run the workflow.

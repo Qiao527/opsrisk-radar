@@ -29,6 +29,17 @@
 | No orphaned scores | Every row in `scores` must reference an existing `articles.id`. Orphans mean scores were written for articles that were later deleted or that never existed. |
 | All `is_scored=1` articles have a score row | The `is_scored` flag and the `scores` table must agree. An article marked scored but missing its score row indicates an incomplete pipeline run or a partial commit. |
 
+### Consistency, timestamps and pipeline (added in 1.5)
+
+| Check | Fails when |
+|-------|-----------|
+| scores match current article text | a scored article's `content_hash` differs from the hash its score was computed from |
+| duplicates point at a primary story | `duplicate_of` references a missing article or another duplicate |
+| no `fetched_at` in the future | clock or migration errors |
+| timestamps are naive UTC ISO-8601 | any timestamp is unparseable or carries an offset |
+| schema up to date | `PRAGMA user_version` is behind the code |
+| latest run | *warning* (not failure) when the last `run` was partial or failed |
+
 ### Source Concentration
 
 | Check | Why it matters |

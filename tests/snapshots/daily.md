@@ -106,4 +106,4 @@ Composite = weighted average (disruption 45%, impact 25%, relevance 5%, actionab
 
 Scoring is rule-based and deterministic; see docs/methodology.md.
 
-*Generated at <TIMESTAMP> by OpsRisk Radar v1.4.0*
+*Generated at <TIMESTAMP> by OpsRisk Radar v1.5.0*
