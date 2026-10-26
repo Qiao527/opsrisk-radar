@@ -11,7 +11,7 @@ import asyncio
 import hashlib
 import logging
 import os
-import subprocess
+import subprocess  # nosec B404 - only runs a fixed git command
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -20,6 +20,7 @@ from opsrisk.config import AppConfig, FeedSource
 from opsrisk.database import ArticleRow, Database, IngestStats
 from opsrisk.feed import FeedResult, fetch_sources
 from opsrisk.models import ArticleScore
+from opsrisk.risk_rules import SCORER_ID as RULES_ID
 from opsrisk.risk_rules import assess
 from opsrisk.scorer import make_article_score
 
@@ -48,7 +49,7 @@ def git_sha() -> str | None:
     if sha := os.environ.get("GITHUB_SHA"):
         return sha
     try:
-        out = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True,
+        out = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True,  # nosec B603 B607
                              timeout=5, check=False)
     except (OSError, subprocess.SubprocessError):
         return None
@@ -122,6 +123,8 @@ class ArticleScorer:
                                                  max_calls=cfg.llm.max_calls_per_run))
         elif self.name not in {"rules-v1", "rules-v2"}:
             raise PipelineError(f"unknown scorer {self.name!r} in config")
+        # The id stored with each score, including the rule-set version.
+        self.stored_id = {"rules-v2": RULES_ID}.get(self.name, self.name)
 
     def __call__(self, row: ArticleRow) -> tuple[ArticleScore, str, dict]:
         base = make_article_score(row.id, row.title, row.summary,
@@ -132,16 +135,16 @@ class ArticleScorer:
             result = self.hybrid.score(row.title, row.summary)
             base.composite_score = result.score
             fell_back = str(result.detail.get("llm", "")).startswith("fallback")
-            return base, "rules-v2" if fell_back else "hybrid-v1", result.detail
+            return base, RULES_ID if fell_back else "hybrid-v1", result.detail
         assessment = assess(row.title, row.summary)
         base.composite_score = assessment.score
-        return base, "rules-v2", assessment.as_detail()
+        return base, RULES_ID, assessment.as_detail()
 
 
 def score(db: Database, cfg: AppConfig) -> int:
     """Score every article that is new, changed, or scored by a different scorer."""
     scorer = ArticleScorer(cfg)
-    pending = db.get_unscored_articles(scorer=scorer.name)
+    pending = db.get_unscored_articles(scorer=scorer.stored_id)
     if not pending:
         print("No unscored articles to process.")
         return 0

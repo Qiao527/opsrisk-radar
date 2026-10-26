@@ -27,9 +27,11 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from opsrisk.signals import is_market_report
+from opsrisk.signals import CATEGORY_LABELS, is_market_report
 
-SCORER_ID = "rules-v2"
+# Version of the rule set stored with every score; bump it on any rule change
+# so stored scores are recomputed. "rules-v2" in config selects this module.
+SCORER_ID = "rules-v2.1"
 
 _FACILITY = (
     r"(ports?|harbou?rs?|terminals?|plants?|factor(?:y|ies)|mills?|airports?|borders?|"
@@ -135,6 +137,7 @@ NOISE_PATTERNS: dict[str, re.Pattern[str]] = {
         "people_events": r"\b(names?|appoints?|hires?|award|finalists|webinar|summit|"
         r"conference|keynote|veteran)\b",
         "opinion_howto": r"(^how\b|\bhow\s+to\b|^why\b|^what\b|\bstrategies\b|\btips\b|"
+        r"^\d+\s+(ways|steps|things|reasons|lessons|questions)\b|"
         r"\blessons\b|\bpromises\s+vs|\bthe\s+next\b|\bguide\b|^analysis:)",
         "technology": r"\b(ai|agentic|automation|robot\w*|digital|software|platform|"
         r"integrat\w+|control\s+towers?|hydrogen|autonomous)\b",
@@ -187,6 +190,10 @@ class RiskAssessment:
             "evidence": self.evidence,
             "reason": self.reason,
         }
+
+
+def _names(categories) -> str:
+    return ", ".join(CATEGORY_LABELS.get(c, c).lower() for c in sorted(categories))
 
 
 def _events(text: str) -> dict[str, list[str]]:
@@ -246,12 +253,12 @@ def assess(title: str, summary: str) -> RiskAssessment:
         score += 0.5 if critical else 0.0
         score += 0.25 if len(all_events) > len(title_events) else 0.0
         return done(score, "act", "ongoing",
-                    f"ongoing interruption: {', '.join(sorted(title_events))}")
+                    f"ongoing interruption: {_names(title_events)}")
 
     if title_events and (resolved or speculative):
         status = "resolved" if resolved else "speculative"
         return done(5.0 + (0.5 if critical else 0.0), "watch", status,
-                    f"{status} {', '.join(sorted(title_events))}")
+                    f"{status}: {_names(title_events)}")
 
     if resolved and noise_type is None and re.search(rf"\b{_FACILITY}\b", title, re.I):
         return done(4.5, "watch", "resolved", "recovery from an earlier interruption")

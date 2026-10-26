@@ -95,6 +95,15 @@ def test_interruption_only_in_summary_is_medium():
 def test_every_score_is_explained():
     a = assess("Typhoon closes ports in southern China", "")
     detail = a.as_detail()
-    assert detail["scorer"] == "rules-v2"
+    assert detail["scorer"] == "rules-v2.1"
     assert detail["reason"]
     assert "severe_weather" in detail["categories"]
+
+
+def test_listicles_are_noise():
+    a = assess("7 ways to cut warehouse costs", "Disruptions keep coming; here is how to prepare.")
+    assert severity_label(a.score) == "LOW"
+
+
+def test_reason_uses_readable_category_names():
+    assert "labor action" in assess("Dockworkers strike halts port operations", "").reason

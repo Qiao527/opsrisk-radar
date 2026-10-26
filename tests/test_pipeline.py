@@ -115,3 +115,15 @@ def test_run_fails_loudly_when_most_feeds_fail(project_dir, monkeypatch, capsys)
         assert db.last_runs()[0]["status"] == "failed"
     finally:
         db.close()
+
+
+def test_rule_set_version_change_triggers_rescoring(project_dir, offline_feeds, monkeypatch,
+                                                    capsys):
+    import opsrisk.risk_rules as rr
+
+    cli.main(["--db", "data/test.db", "run"])
+    monkeypatch.setattr(rr, "SCORER_ID", "rules-v2.test")
+    monkeypatch.setattr(pipeline, "RULES_ID", "rules-v2.test")
+    capsys.readouterr()
+    cli.main(["--db", "data/test.db", "score"])
+    assert "Scoring 3 article(s)" in capsys.readouterr().out
