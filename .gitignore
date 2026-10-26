@@ -13,3 +13,8 @@ data/*.db-shm
 data/*.db-wal
 build/
 dist/
+
+# Generated outputs (published by the Pipeline workflow, not committed)
+/briefs/
+/reports/
+/site/

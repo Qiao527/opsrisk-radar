@@ -201,7 +201,7 @@ def test_pipeline_hybrid_without_credentials_falls_back_and_records_rules(
         db.upsert_article("https://e.com/1", TITLE, None, "Wire", "logistics", SUMMARY, "")
         assert score(db, cfg) == 1
         row = db.conn.execute("SELECT scorer, composite_score, detail FROM scores").fetchone()
-        assert row["scorer"] == "rules-v2"
+        assert row["scorer"] == "rules-v2.1"
         assert row["composite_score"] >= 7.0
         assert "fallback" in json.loads(row["detail"])["llm"]
     finally:

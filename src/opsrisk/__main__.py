@@ -188,7 +188,8 @@ def _cmd_agreement(db: Database, cfg: AppConfig, args: argparse.Namespace) -> in
 def _cmd_run(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
     """Fetch, score and brief, recorded as one row in the ``runs`` table."""
     run_id = db.start_run("run", __version__, pipeline.git_sha(),
-                          pipeline.config_hash(args.config), cfg.scoring.scorer)
+                          pipeline.config_hash(args.config),
+                          pipeline.stored_scorer_id(cfg.scoring.scorer))
     stats: dict = {}
     try:
         _banner("Step 1: Fetch feeds")
@@ -213,6 +214,27 @@ def _cmd_run(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
     return 0
 
 
+def _site_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--out", type=Path, default=Path("site"), help="Output directory")
+    p.add_argument("--label", choices=["live", "sample", "fixture"], default="live",
+                   help="What the data is; anything but live shows a banner on the page")
+    p.add_argument("--check-only", action="store_true", help="Validate an existing build")
+
+
+def _cmd_site(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
+    from opsrisk.site import build_site, check_site
+
+    if not args.check_only:
+        built = build_site(db, args.out, data_label=args.label)
+        print(f"Site written to {args.out}/: {built['articles']} stories, {built['days']} "
+              f"day(s), {built['weeks']} week(s){' (STALE)' if built['stale'] else ''}")
+    problems = check_site(args.out)
+    for p in problems:
+        print(f"  FAIL: {p}")
+    print("Site check passed." if not problems else f"Site check failed ({len(problems)}).")
+    return 1 if problems else 0
+
+
 def _cmd_status(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
     runs = db.last_runs(limit=5)
     if not runs:
@@ -233,6 +255,7 @@ ArgSpec = Callable[[argparse.ArgumentParser], None]
 COMMAND_ARGS: dict[str, ArgSpec] = {
     "evaluate": _eval_args,
     "agreement": _agreement_args,
+    "site": _site_args,
 }
 
 COMMANDS: list[tuple[str, str, Command]] = [
@@ -245,6 +268,7 @@ COMMANDS: list[tuple[str, str, Command]] = [
     ("source-audit", "Audit source quality metrics", _cmd_source_audit),
     ("run", "Fetch → Score → Brief (full pipeline)", _cmd_run),
     ("status", "Show recent pipeline runs", _cmd_status),
+    ("site", "Build and validate the static dashboard", _cmd_site),
     ("evaluate", "Compare scorers on the labeled evaluation set", _cmd_evaluate),
     ("agreement", "Inter-annotator agreement (Cohen's kappa)", _cmd_agreement),
 ]

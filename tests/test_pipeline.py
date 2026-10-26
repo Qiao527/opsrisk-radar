@@ -84,7 +84,7 @@ def test_run_is_recorded_with_provenance(project_dir, offline_feeds, capsys):
     try:
         (run,) = db.last_runs()
         assert run["status"] == "ok"
-        assert run["scorer"] == "rules-v2"
+        assert run["scorer"] == "rules-v2.1"
         assert run["config_hash"]
         assert run["stats"]["new"] == 3
         (fetch,) = db.fetches_for_run(run["id"])
@@ -115,3 +115,15 @@ def test_run_fails_loudly_when_most_feeds_fail(project_dir, monkeypatch, capsys)
         assert db.last_runs()[0]["status"] == "failed"
     finally:
         db.close()
+
+
+def test_rule_set_version_change_triggers_rescoring(project_dir, offline_feeds, monkeypatch,
+                                                    capsys):
+    import opsrisk.risk_rules as rr
+
+    cli.main(["--db", "data/test.db", "run"])
+    monkeypatch.setattr(rr, "SCORER_ID", "rules-v2.test")
+    monkeypatch.setattr(pipeline, "RULES_ID", "rules-v2.test")
+    capsys.readouterr()
+    cli.main(["--db", "data/test.db", "score"])
+    assert "Scoring 3 article(s)" in capsys.readouterr().out

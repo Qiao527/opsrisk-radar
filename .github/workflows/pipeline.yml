@@ -1,0 +1,149 @@
+name: Pipeline
+
+# Daily: fetch feeds, score, validate, rebuild the dashboard from the full
+# history, publish it to GitHub Pages, and save the database.
+#
+# State: the SQLite database is stored as a release asset (tag
+# `pipeline-data`), not in git, so history does not bloat the repository.
+# The previous copy is kept as `opsrisk.prev.db.gz` for one-step rollback.
+
+on:
+  schedule:
+    # 11:17 UTC daily (off the top of the hour, when scheduled runs queue).
+    - cron: "17 11 * * *"
+  workflow_dispatch:
+    inputs:
+      allow_fresh_db:
+        description: "Start a new database if no saved one exists (first run only)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  DATA_TAG: pipeline-data
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write   # read/write the pipeline-data release asset
+      actions: write    # re-enable this workflow (inactivity keepalive)
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # Secrets cannot appear in `if:`; expose only whether email is configured.
+      EMAIL_CONFIGURED: ${{ secrets.RESEND_API_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install
+        run: pip install .
+
+      - name: Restore database
+        run: |
+          mkdir -p data
+          if gh release view "$DATA_TAG" >/dev/null 2>&1; then
+            # The release exists, so a failed download must fail the run
+            # rather than silently start an empty history.
+            gh release download "$DATA_TAG" -p opsrisk.db.gz -D data
+            gunzip data/opsrisk.db.gz
+            cp data/opsrisk.db data/opsrisk.prev.db
+            echo "Restored database ($(du -h data/opsrisk.db | cut -f1))"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.allow_fresh_db }}" = "true" ]; then
+            echo "No saved database; starting fresh as requested."
+          else
+            echo "::error::No saved database (release $DATA_TAG). Run manually with allow_fresh_db=true to initialize."
+            exit 1
+          fi
+
+      - name: Fetch and score
+        run: python -m opsrisk --log-format json --log-level INFO run
+
+      - name: Validate database
+        run: python -m opsrisk validate
+
+      - name: Build and check dashboard
+        run: python -m opsrisk site --out site
+
+      - name: Save database
+        run: |
+          gzip -k -9 data/opsrisk.db
+          if ! gh release view "$DATA_TAG" >/dev/null 2>&1; then
+            gh release create "$DATA_TAG" --title "Pipeline data" --latest=false \
+              --notes "Machine-managed SQLite state for the scheduled pipeline. Do not edit."
+          fi
+          assets=(data/opsrisk.db.gz)
+          if [ -f data/opsrisk.prev.db ]; then
+            gzip -c -9 data/opsrisk.prev.db > data/opsrisk.prev.db.gz
+            assets+=(data/opsrisk.prev.db.gz)
+          fi
+          gh release upload "$DATA_TAG" "${assets[@]}" --clobber
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Keep the schedule active
+        # GitHub disables scheduled workflows after 60 days without repository
+        # activity. Re-enabling on every run resets that; if it ever lapses,
+        # the dashboard's freshness banner turns stale.
+        continue-on-error: true
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/pipeline.yml/enable"
+
+      - name: Email digest (optional)
+        if: env.EMAIL_CONFIGURED == 'true'
+        continue-on-error: true
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          REPORT_EMAIL_TO: ${{ secrets.REPORT_EMAIL_TO }}
+          REPORT_EMAIL_FROM: ${{ secrets.REPORT_EMAIL_FROM }}
+        run: |
+          python -m opsrisk html
+          DIGEST=$(ls reports/daily/*-email.html 2>/dev/null | head -1)
+          [ -n "$DIGEST" ] && python scripts/send_report_email.py "$DIGEST"
+
+  deploy:
+    needs: run
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  report-failure:
+    needs: [run, deploy]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Open or update the failure issue
+        run: |
+          title="Scheduled pipeline failing"
+          number=$(gh issue list -R "${{ github.repository }}" --state open --search "in:title $title" --json number -q '.[0].number')
+          body="Run failed: $RUN_URL"
+          if [ -n "$number" ]; then
+            gh issue comment "$number" -R "${{ github.repository }}" --body "$body"
+          else
+            gh issue create -R "${{ github.repository }}" --title "$title" --body "$body"
+          fi

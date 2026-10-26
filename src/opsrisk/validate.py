@@ -49,7 +49,7 @@ def run_validations(db: Database) -> bool:
 
     for col in ("url", "title", "source_name", "source_category", "fetched_at"):
         nulls = conn.execute(
-            f"SELECT COUNT(*) FROM articles WHERE {col} IS NULL OR trim({col}) = ''"
+            f"SELECT COUNT(*) FROM articles WHERE {col} IS NULL OR trim({col}) = ''"  # nosec B608 - col from a fixed tuple
         ).fetchone()[0]
         ok = total_articles - nulls
         if nulls == 0:
@@ -73,7 +73,7 @@ def run_validations(db: Database) -> bool:
     ]
     for col in score_cols:
         bad = conn.execute(
-            f"SELECT COUNT(*) FROM scores WHERE {col} < 0 OR {col} > 10"
+            f"SELECT COUNT(*) FROM scores WHERE {col} < 0 OR {col} > 10"  # nosec B608 - col from a fixed list
         ).fetchone()[0]
         ok = total_scores - bad
         if bad == 0:

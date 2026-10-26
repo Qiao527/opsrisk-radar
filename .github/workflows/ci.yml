@@ -31,3 +31,51 @@ jobs:
 
       - name: Test
         run: pytest
+
+  package:
+    # Build the wheel and run it from a clean virtualenv outside the source
+    # tree, so missing package data or undeclared imports fail here.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build sdist and wheel
+        run: |
+          pip install build twine
+          python -m build
+          twine check dist/*
+
+      - name: Smoke-test the installed wheel
+        run: |
+          python -m venv /tmp/clean
+          /tmp/clean/bin/pip install dist/*.whl
+          cd "$(mktemp -d)"
+          cp -r "$GITHUB_WORKSPACE/config" .
+          /tmp/clean/bin/opsrisk --version
+          /tmp/clean/bin/opsrisk --db data/x.db validate || true
+          /tmp/clean/bin/opsrisk --db data/x.db site --out site
+          test -f site/index.html && test -f site/data/latest.json
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Audit dependencies for known vulnerabilities
+        run: |
+          pip install pip-audit
+          pip install ".[llm]"
+          pip-audit --skip-editable
+
+      - name: Static security checks
+        run: |
+          pip install bandit
+          bandit -q -r src

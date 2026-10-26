@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpsRisk Radar</title>
+<meta name="description" content="Automated supply chain disruption monitoring from public news feeds, with explained risk scores.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <div>
+      <h1>OpsRisk Radar</h1>
+      <p class="tagline">Supply chain disruption signals from public news, scored and explained</p>
+    </div>
+    <nav aria-label="Sections">
+      <a href="#briefing">Briefing</a>
+      <a href="#events">Events</a>
+      <a href="#history">History</a>
+      <a href="#status">Pipeline</a>
+      <a href="#method">Method</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <div id="banner" class="banner" role="status" hidden></div>
+</div>
+
+<main id="main" class="wrap">
+  <section id="briefing" aria-labelledby="briefing-h">
+    <h2 id="briefing-h">Current briefing</h2>
+    <p class="muted" id="briefing-meta"></p>
+    <div class="kpis" id="kpis"></div>
+    <ol class="brief-list" id="brief-list"></ol>
+    <p class="muted" id="brief-empty" hidden>No article in the last 7 days reached HIGH severity.</p>
+  </section>
+
+  <section id="events" aria-labelledby="events-h">
+    <h2 id="events-h">Ranked events</h2>
+    <form class="filters" id="filters" onsubmit="return false">
+      <label>Search <input type="search" id="f-q" placeholder="title, summary, source"></label>
+      <label>Severity
+        <select id="f-sev">
+          <option value="">All</option>
+          <option value="HIGH">High or critical</option>
+          <option value="MEDIUM">Medium or higher</option>
+          <option value="LOW">Low only</option>
+        </select>
+      </label>
+      <label>Category <select id="f-cat"><option value="">All</option></select></label>
+      <label>Source <select id="f-src"><option value="">All</option></select></label>
+      <label>Window <select id="f-day"><option value="">Last 7 days</option></select></label>
+    </form>
+    <p class="muted" id="count" aria-live="polite"></p>
+    <ul class="events" id="event-list"></ul>
+  </section>
+
+  <section id="history" aria-labelledby="history-h">
+    <h2 id="history-h">History</h2>
+    <div class="cols">
+      <div>
+        <h3>Daily</h3>
+        <table class="table" id="day-table">
+          <caption class="sr-only">Stories first seen per UTC day, by severity</caption>
+          <thead><tr><th scope="col">Day (UTC)</th><th scope="col">Stories</th><th scope="col">High+</th><th scope="col">Medium</th><th scope="col">Low</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div>
+        <h3>Weekly</h3>
+        <label>Week <select id="f-week"></select></label>
+        <div id="week-view"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="status" aria-labelledby="status-h">
+    <h2 id="status-h">Pipeline status</h2>
+    <p id="status-summary"></p>
+    <table class="table" id="feed-table">
+      <caption class="sr-only">Feed results in the latest run</caption>
+      <thead><tr><th scope="col">Feed</th><th scope="col">Result</th><th scope="col">Entries</th><th scope="col">Attempts</th><th scope="col">Time</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <details>
+      <summary>Recent runs</summary>
+      <table class="table" id="run-table">
+        <thead><tr><th scope="col">Run</th><th scope="col">Started (UTC)</th><th scope="col">Status</th><th scope="col">New</th><th scope="col">Scorer</th><th scope="col">Commit</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </details>
+  </section>
+
+  <section id="method" aria-labelledby="method-h" class="prose">
+    <h2 id="method-h">How scores are produced</h2>
+    <p>Feeds from trade publications are fetched daily. Each article is normalized, deduplicated (same URL, or a near-identical headline within 7 days) and scored from its <strong>title and summary only</strong>.</p>
+    <p>The default scorer (<code>rules-v2</code>) asks three questions, following a written <a href="https://github.com/Qiao527/opsrisk-radar/blob/main/docs/labeling_guide.md">labeling guide</a>:</p>
+    <ol>
+      <li><strong>Event</strong>: does the article report something interrupting goods, capacity or production (closure, strike, attack, accident, outage, severe weather, congestion, a dated trade measure)?</li>
+      <li><strong>Status</strong>: is it ongoing, or resolved, speculative or postponed?</li>
+      <li><strong>Article type</strong>: is it earnings, a deal, an appointment, a launch or an opinion piece?</li>
+    </ol>
+    <table class="table">
+      <thead><tr><th scope="col">Severity</th><th scope="col">Score</th><th scope="col">Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><span class="sev sev-HIGH">High / critical</span></td><td>7 – 10</td><td>An interruption is under way or has a stated date</td></tr>
+        <tr><td><span class="sev sev-MEDIUM">Medium</span></td><td>4 – 6.9</td><td>Risk-relevant but not interrupting: resolved, threatened, proposed, or a trend</td></tr>
+        <tr><td><span class="sev sev-LOW">Low</span></td><td>0 – 3.9</td><td>Supply chain context or not a risk signal</td></tr>
+      </tbody>
+    </table>
+    <p>Every event shows the phrases that triggered its score and the reason. An optional hybrid mode sends non-noise articles to an LLM that must quote the article verbatim; it is <strong>off</strong> unless the method column says otherwise.</p>
+    <h3>Limitations</h3>
+    <ul>
+      <li>Scores are automated and unreviewed. They describe headlines, not verified facts, and are not advice.</li>
+      <li>Evaluation so far uses machine-suggested labels; human labeling is pending. See the <a href="https://github.com/Qiao527/opsrisk-radar/tree/main/eval">evaluation set</a>.</li>
+      <li>Coverage is limited to the configured English-language trade feeds.</li>
+    </ul>
+  </section>
+</main>
+
+<footer class="wrap footer">
+  <p id="footer-meta" class="muted"></p>
+  <p class="muted"><a href="https://github.com/Qiao527/opsrisk-radar">Source code</a> · Articles link to their publishers; headlines and summaries belong to them.</p>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>
