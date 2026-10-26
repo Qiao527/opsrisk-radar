@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import asyncio
+import calendar
+import re
 from datetime import datetime, timezone
 
 import feedparser
@@ -8,16 +11,19 @@ import httpx
 from opsrisk.config import FeedSource
 from opsrisk.models import Article
 
+_RE_HTML_TAGS = re.compile(r"<[^>]+>")
+_RE_WHITESPACE = re.compile(r"\s+")
+
 
 def _parse_date(parsed: dict) -> datetime | None:
-    dt_tuple = parsed.get("published_parsed")
+    # feedparser normalizes dates to a UTC struct_time. calendar.timegm reads
+    # it as UTC; time.mktime would read it as local time and shift the date
+    # by the machine's UTC offset.
+    dt_tuple = parsed.get("published_parsed") or parsed.get("updated_parsed")
     if dt_tuple:
         try:
-            from time import mktime
-
-            ts = mktime(dt_tuple)
-            return datetime.fromtimestamp(ts, tz=timezone.utc)
-        except Exception:
+            return datetime.fromtimestamp(calendar.timegm(dt_tuple), tz=timezone.utc)
+        except (OverflowError, TypeError, ValueError):
             return None
 
     raw = parsed.get("published") or parsed.get("updated")
@@ -28,12 +34,6 @@ def _parse_date(parsed: dict) -> datetime | None:
             return None
 
     return None
-
-
-import re
-
-_RE_HTML_TAGS = re.compile(r"<[^>]+>")
-_RE_WHITESPACE = re.compile(r"\s+")
 
 
 def _normalize_summary(entry: dict) -> str:
@@ -83,14 +83,20 @@ async def fetch_feed(
     return articles
 
 
-async def fetch_all_feeds(sources: list[FeedSource]) -> list[Article]:
+async def fetch_all_feeds(
+    sources: list[FeedSource],
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> list[Article]:
+    """Fetch every enabled feed concurrently.
+
+    ``transport`` lets tests substitute ``httpx.MockTransport`` so the
+    pipeline can run without network access.
+    """
     enabled = [s for s in sources if s.enabled]
     print(f"Ingesting {len(enabled)} feed(s)...")
 
     limits = httpx.Limits(max_keepalive_connections=5, max_connections=10)
-    async with httpx.AsyncClient(limits=limits) as client:
-        import asyncio
-
+    async with httpx.AsyncClient(limits=limits, transport=transport) as client:
         tasks = [fetch_feed(client, src) for src in enabled]
         results = await asyncio.gather(*tasks)
 

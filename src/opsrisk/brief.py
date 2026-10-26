@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from opsrisk import __version__
 from opsrisk.models import Article, ArticleScore, DailyBrief, ScoredArticle
 
 
@@ -92,7 +93,28 @@ def _category_group(articles: list[ScoredArticle]) -> str:
     return "\n".join(parts)
 
 
-def _scoring_methodology_note() -> str:
+_DIMENSION_LABELS = {
+    "disruption_risk": "disruption",
+    "business_impact": "impact",
+    "strategic_relevance": "relevance",
+    "actionability": "actionability",
+    "signal_strength": "signal strength",
+}
+
+
+def _format_weights(weights: dict[str, float]) -> str:
+    return ", ".join(
+        f"{_DIMENSION_LABELS.get(dim, dim)} {round(w * 100)}%"
+        for dim, w in weights.items()
+    )
+
+
+def _scoring_methodology_note(weights: dict[str, float] | None = None) -> str:
+    weights_line = (
+        f"Composite = weighted average ({_format_weights(weights)}).\n\n"
+        if weights
+        else "Composite = weighted average of the five dimensions.\n\n"
+    )
     return (
         "### Methodology\n\n"
         "Articles are scored on five dimensions (1-10) using keyword-based "
@@ -102,9 +124,8 @@ def _scoring_methodology_note() -> str:
         "- **Strategic Relevance** — Long-term strategy alignment\n"
         "- **Actionability** — Regulatory or deadline-driven urgency\n"
         "- **Signal Strength** — Specificity and authority of the signal\n\n"
-        "Composite = weighted average (disruption 30%, impact 25%, "
-        "relevance 20%, actionability 15%, signal strength 10%).\n\n"
-        "Scoring is rule-based in v1. LLM-enhanced scoring is on the roadmap."
+        f"{weights_line}"
+        "Scoring is rule-based and deterministic; see docs/methodology.md."
     )
 
 
@@ -141,13 +162,15 @@ def generate_brief(
     return brief
 
 
-def render_markdown(brief: DailyBrief) -> str:
+def render_markdown(
+    brief: DailyBrief, weights: dict[str, float] | None = None
+) -> str:
     total = len(brief.articles)
     high = brief.high_risk_count
     med = brief.medium_risk_count
 
     lines = [
-        f"# OpsRisk Radar — Daily Brief",
+        "# OpsRisk Radar — Daily Brief",
         f"**{brief.date}**",
         "",
         "## Executive Summary",
@@ -170,10 +193,10 @@ def render_markdown(brief: DailyBrief) -> str:
 
     lines.append("---")
     lines.append("")
-    lines.append(_scoring_methodology_note())
+    lines.append(_scoring_methodology_note(weights))
     lines.append("")
     lines.append(
-        f"*Generated at {brief.generated_at} by OpsRisk Radar v0.1.0*"
+        f"*Generated at {brief.generated_at} by OpsRisk Radar v{__version__}*"
     )
 
     return "\n".join(lines)
