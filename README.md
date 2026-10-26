@@ -84,6 +84,7 @@ All available commands:
 | `opsrisk html` | Generate HTML reports (daily + weekly) |
 | `opsrisk source-audit` | Audit source quality and signal metrics |
 | `opsrisk run` | Run the full pipeline (fetch + score + brief) |
+| `opsrisk evaluate` | Measure ranking quality against hand labels in [`eval/labels.csv`](eval/README.md) |
 
 The daily brief appears in `briefs/YYYY-MM-DD.md`. A sample is at [`briefs/2026-04-29.md`](briefs/2026-04-29.md).
 Weekly reports go to `briefs/weekly/YYYY-MM-DD.md`.
