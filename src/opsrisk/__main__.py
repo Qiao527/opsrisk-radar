@@ -188,7 +188,8 @@ def _cmd_agreement(db: Database, cfg: AppConfig, args: argparse.Namespace) -> in
 def _cmd_run(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
     """Fetch, score and brief, recorded as one row in the ``runs`` table."""
     run_id = db.start_run("run", __version__, pipeline.git_sha(),
-                          pipeline.config_hash(args.config), cfg.scoring.scorer)
+                          pipeline.config_hash(args.config),
+                          pipeline.stored_scorer_id(cfg.scoring.scorer))
     stats: dict = {}
     try:
         _banner("Step 1: Fetch feeds")

@@ -84,7 +84,7 @@ def test_run_is_recorded_with_provenance(project_dir, offline_feeds, capsys):
     try:
         (run,) = db.last_runs()
         assert run["status"] == "ok"
-        assert run["scorer"] == "rules-v2"
+        assert run["scorer"] == "rules-v2.1"
         assert run["config_hash"]
         assert run["stats"]["new"] == 3
         (fetch,) = db.fetches_for_run(run["id"])

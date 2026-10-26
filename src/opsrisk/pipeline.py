@@ -102,6 +102,11 @@ def fetch(db: Database, cfg: AppConfig, run_id: int | None = None,
     return summary
 
 
+def stored_scorer_id(name: str) -> str:
+    """The id stored with scores and runs for a configured scorer name."""
+    return {"rules-v2": RULES_ID}.get(name, name)
+
+
 class ArticleScorer:
     """Scores one article with the configured scorer.
 
@@ -124,7 +129,7 @@ class ArticleScorer:
         elif self.name not in {"rules-v1", "rules-v2"}:
             raise PipelineError(f"unknown scorer {self.name!r} in config")
         # The id stored with each score, including the rule-set version.
-        self.stored_id = {"rules-v2": RULES_ID}.get(self.name, self.name)
+        self.stored_id = stored_scorer_id(self.name)
 
     def __call__(self, row: ArticleRow) -> tuple[ArticleScore, str, dict]:
         base = make_article_score(row.id, row.title, row.summary,
