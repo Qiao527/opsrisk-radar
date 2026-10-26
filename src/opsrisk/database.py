@@ -392,11 +392,23 @@ class Database:
 
     # -- report queries -----------------------------------------------------
 
-    _SCORED_COLUMNS = """
-        a.id, a.url, a.title, a.published, a.source_name, a.source_category,
-        a.summary, a.fetched_at, a.duplicate_of,
-        s.disruption_risk, s.business_impact, s.strategic_relevance,
-        s.actionability, s.signal_strength, s.composite_score, s.scorer, s.detail
+    _SCORED_SELECT = """
+        SELECT a.id, a.url, a.title, a.published, a.source_name, a.source_category,
+               a.summary, a.fetched_at, a.duplicate_of,
+               s.disruption_risk, s.business_impact, s.strategic_relevance,
+               s.actionability, s.signal_strength, s.composite_score, s.scorer, s.detail
+        FROM articles a
+        JOIN scores s ON s.article_id = a.id
+    """
+    _RECENT_SQL = _SCORED_SELECT + """
+        WHERE a.fetched_at >= ? AND (? IS NULL OR a.fetched_at < ?)
+          AND a.duplicate_of IS NULL
+        ORDER BY s.composite_score DESC, a.id
+        LIMIT ?
+    """
+    _LAST_DAYS_SQL = _SCORED_SELECT + """
+        WHERE a.fetched_at >= ? AND a.duplicate_of IS NULL
+        ORDER BY a.fetched_at DESC, a.id
     """
 
     def get_recent_scored_articles(
@@ -408,34 +420,14 @@ class Database:
         """
         if since is None:
             since = _utc_now_iso()[:10]
-        cursor = self.conn.execute(
-            f"""
-            SELECT {self._SCORED_COLUMNS}
-            FROM articles a
-            JOIN scores s ON s.article_id = a.id
-            WHERE a.fetched_at >= ? AND (? IS NULL OR a.fetched_at < ?)
-              AND a.duplicate_of IS NULL
-            ORDER BY s.composite_score DESC, a.id
-            LIMIT ?
-            """,
-            (since, until, until, limit),
-        )
+        cursor = self.conn.execute(self._RECENT_SQL, (since, until, until, limit))
         return [_row(r) for r in cursor.fetchall()]
 
     def get_scored_last_days(self, days: int, now: datetime | None = None) -> list[dict]:
         """Distinct scored stories first seen in the last ``days`` days, newest first."""
         now = now or datetime.now(timezone.utc)
         since = utc_iso(now - timedelta(days=days))
-        cursor = self.conn.execute(
-            f"""
-            SELECT {self._SCORED_COLUMNS}
-            FROM articles a
-            JOIN scores s ON s.article_id = a.id
-            WHERE a.fetched_at >= ? AND a.duplicate_of IS NULL
-            ORDER BY a.fetched_at DESC, a.id
-            """,
-            (since,),
-        )
+        cursor = self.conn.execute(self._LAST_DAYS_SQL, (since,))
         return [_row(r) for r in cursor.fetchall()]
 
     def duplicate_sources(self) -> dict[int, list[str]]:

@@ -136,7 +136,7 @@ def bootstrap_ci(
     Resamples articles with replacement; resamples where the metric is
     undefined (e.g. no positives drawn) are skipped.
     """
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # nosec B311 - statistical resampling, not security
     idx = range(len(scores))
     values: list[float] = []
     for _ in range(n):
