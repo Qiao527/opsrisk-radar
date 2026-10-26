@@ -3,13 +3,13 @@
 
 ## Executive Summary
 
-Scanned **6** signal(s) from **3** source(s). **1** high-risk, **2** medium-risk, 3 low-risk signal(s) identified.
+Scanned **6** signal(s) from **3** source(s). **1** high-risk, **1** medium-risk, 4 low-risk signal(s) identified.
 
 Severity distribution:
 
   HIGH     ███░░░░░░░░░░░░░░░░░ 1
-  MEDIUM   ███████░░░░░░░░░░░░░ 2
-  LOW      ██████████░░░░░░░░░░ 3
+  MEDIUM   ███░░░░░░░░░░░░░░░░░ 1
+  LOW      █████████████░░░░░░░ 4
 
 ## Top Signals
 

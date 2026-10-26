@@ -586,7 +586,7 @@ def _count_themes(rows: list[dict]) -> dict[str, int]:
 def _weekly_body(rows: list[dict], total_sources: int, now_str: str) -> str:
     total = len(rows)
     high = sum(1 for r in rows if r["composite_score"] >= 7.0)
-    med = sum(1 for r in rows if r["composite_score"] >= 4.0)
+    med = sum(1 for r in rows if 4.0 <= r["composite_score"] < 7.0)
     low = total - high - med
 
     week_start = min(r.get("fetched_at", "") for r in rows)[:10]
@@ -866,7 +866,7 @@ def _signal_priority(r: dict[str, Any]) -> float:
 def _email_takeaway(rows: list[dict]) -> str:
     """Generate a one-sentence 'Today's Takeaway' summary."""
     high = sum(1 for r in rows if r["composite_score"] >= 7.0)
-    med = sum(1 for r in rows if r["composite_score"] >= 4.0)
+    med = sum(1 for r in rows if 4.0 <= r["composite_score"] < 7.0)
 
     if high > 0:
         s = "s" if high > 1 else ""
@@ -1019,7 +1019,7 @@ def generate_email_digest(db: Database, reports_dir: Path) -> Path | None:
 
     total_sources = len(set(r["source_name"] for r in rows))
     high = sum(1 for r in rows if r["composite_score"] >= 7.0)
-    med = sum(1 for r in rows if r["composite_score"] >= 4.0)
+    med = sum(1 for r in rows if 4.0 <= r["composite_score"] < 7.0)
     low = len(rows) - high - med
 
     parts: list[str] = []

@@ -168,7 +168,7 @@ def _build_markdown(rows: list[dict], total_sources: int) -> str:
         )
 
     total = len(rows)
-    med = sum(1 for r in rows if r["composite_score"] >= 4.0)
+    med = sum(1 for r in rows if 4.0 <= r["composite_score"] < 7.0)
     high = sum(1 for r in rows if r["composite_score"] >= 7.0)
     low = total - med - high
 
