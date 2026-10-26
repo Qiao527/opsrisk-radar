@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from opsrisk.brief import generate_brief, _severity_label
+from opsrisk.brief import _severity_label, generate_brief
 from opsrisk.database import Database
 from opsrisk.models import DailyBrief
 

@@ -3,29 +3,29 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from opsrisk.brief import generate_brief, render_markdown, write_brief
 from opsrisk.config import load_config
 from opsrisk.database import Database
 from opsrisk.feed import fetch_all_feeds
-from opsrisk.scorer import make_article_score
-from opsrisk.brief import generate_brief, render_markdown, write_brief
-from opsrisk.validate import run_validations
-from opsrisk.weekly import generate_weekly_report
 from opsrisk.html_report import (
     generate_daily_html,
-    generate_weekly_html,
     generate_email_digest,
+    generate_weekly_html,
 )
+from opsrisk.scorer import make_article_score
 from opsrisk.source_audit import audit_sources, print_audit
+from opsrisk.validate import run_validations
+from opsrisk.weekly import generate_weekly_report
 
 
 def _run_fetch(db: Database, sources) -> None:
     articles = asyncio.run(fetch_all_feeds(sources))
     new_count = 0
     for a in articles:
-        aid = db.upsert_article(
+        _, is_new = db.upsert_article(
             url=a.url,
             title=a.title,
             published=a.published,
@@ -34,9 +34,12 @@ def _run_fetch(db: Database, sources) -> None:
             summary=a.summary,
             raw_content=a.raw_content,
         )
-        if aid:
+        if is_new:
             new_count += 1
-    print(f"  Inserted/updated {new_count} article(s)")
+    print(
+        f"  Inserted {new_count} new article(s), "
+        f"refreshed {len(articles) - new_count} already stored"
+    )
 
 
 def _run_score(db: Database, weights: dict[str, float]) -> None:
@@ -68,19 +71,21 @@ def _run_score(db: Database, weights: dict[str, float]) -> None:
     print(f"  Scored {len(unscored)} article(s)")
 
 
-def _run_brief(db: Database, briefs_dir: Path) -> None:
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+def _run_brief(db: Database, briefs_dir: Path, weights: dict[str, float]) -> None:
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
     rows = db.get_recent_scored_articles(since=today)
     if not rows:
         print("No scored articles found for today. Checking last 7 days...")
-        rows = db.get_recent_scored_articles(since=f"{today[:8]}01", limit=50)
+        week_ago = (now - timedelta(days=7)).strftime("%Y-%m-%d")
+        rows = db.get_recent_scored_articles(since=week_ago, limit=50)
 
     if not rows:
         print("No articles available to generate a brief.")
         return
 
     brief = generate_brief(rows)
-    md = render_markdown(brief)
+    md = render_markdown(brief, weights)
     path = write_brief(briefs_dir, md, brief.date)
     print(f"Brief written to {path}")
 
@@ -107,13 +112,12 @@ def _cmd_brief(args) -> None:
     cfg = load_config()
     db = Database(args.db or "data/opsrisk.db")
     try:
-        _run_brief(db, cfg.briefs_dir)
+        _run_brief(db, cfg.briefs_dir, cfg.scoring.composite_weights)
     finally:
         db.close()
 
 
 def _cmd_validate(args) -> None:
-    cfg = load_config()
     db = Database(args.db or "data/opsrisk.db")
     try:
         ok = run_validations(db)
@@ -139,7 +143,6 @@ def _cmd_weekly(args) -> None:
 
 
 def _cmd_html(args) -> None:
-    cfg = load_config()
     db = Database(args.db or "data/opsrisk.db")
     try:
         print("=" * 50)
@@ -197,7 +200,7 @@ def _cmd_run(args) -> None:
         print("=" * 50)
         print("Step 3: Generate brief")
         print("=" * 50)
-        _run_brief(db, cfg.briefs_dir)
+        _run_brief(db, cfg.briefs_dir, cfg.scoring.composite_weights)
         print()
         print("Done.")
     finally:

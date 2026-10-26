@@ -1,6 +1,6 @@
 # OpsRisk Radar
 
-![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg) ![License](https://img.shields.io/badge/license-MIT-green) ![Status](https://img.shields.io/badge/status-v1.3-orange)
+[![CI](https://github.com/Qiao527/opsrisk-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/Qiao527/opsrisk-radar/actions/workflows/ci.yml) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg) ![License](https://img.shields.io/badge/license-MIT-green) ![Status](https://img.shields.io/badge/status-v1.4-orange)
 
 **OpsRisk Radar turns scattered supply chain news into ranked operational risk signals.**
 
@@ -152,10 +152,20 @@ OpsRisk Radar includes GitHub Actions workflows for scheduled report generation.
 
 Optional email delivery via Resend API is available. Set `RESEND_API_KEY`, `REPORT_EMAIL_TO`, and `REPORT_EMAIL_FROM` as GitHub Secrets to enable it. The email step fails gracefully if secrets are not configured.
 
+### Tests
+
+```bash
+pip install -e ".[dev]"
+pytest              # unit + end-to-end tests, no network needed
+ruff check src tests scripts
+```
+
+The end-to-end tests run the real CLI (`run`, `validate`, `weekly`, `html`) against a fixture RSS feed served by `httpx.MockTransport`, so they are fast and deterministic. CI runs lint and tests on Python 3.11, 3.12 and 3.13 for every push and pull request.
+
 ### Requirements
 
 - Python 3.11+ (uses `tomllib` from stdlib)
-- Dependencies: `feedparser`, `httpx`, `pydantic`
+- Dependencies: `feedparser`, `httpx`
 
 ---
 
@@ -177,7 +187,10 @@ opsrisk-radar/
 │   ├── brief.py          # Markdown brief generator
 │   ├── validate.py       # Data quality validation
 │   ├── weekly.py         # Weekly trend report generator
+│   ├── html_report.py    # HTML daily/weekly reports and email digest
+│   ├── source_audit.py   # Per-source signal quality metrics
 │   └── __main__.py       # CLI entry point
+├── tests/                # pytest suite with a fixture RSS feed
 ├── config/
 │   └── sources.toml      # RSS feed list and scoring weights
 ├── data/                 # SQLite database (auto-created)

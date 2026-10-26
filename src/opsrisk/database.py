@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
+
+
+def _utc_now_iso() -> str:
+    """Current UTC time as a naive ISO string, matching rows already stored."""
+    return datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
 
 DB_SCHEMA_SQL = """
@@ -70,15 +75,28 @@ class Database:
         source_category: str,
         summary: str,
         raw_content: str,
-    ) -> int:
-        now = datetime.utcnow().isoformat()
+    ) -> tuple[int, bool]:
+        """Insert an article, or refresh it if the URL is already stored.
+
+        Returns ``(article_id, is_new)``. If an existing article's title or
+        summary changed, it is marked unscored so the next ``score`` run
+        re-evaluates it instead of keeping a score for the old text.
+        """
+        now = _utc_now_iso()
         pub_str = published.isoformat() if published else None
-        cursor = self.conn.execute(
+        existing = self.conn.execute(
+            "SELECT id FROM articles WHERE url = ?", (url,)
+        ).fetchone()
+        self.conn.execute(
             """
             INSERT INTO articles (url, title, published, source_name,
                                   source_category, summary, raw_content, fetched_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(url) DO UPDATE SET
+                is_scored = CASE
+                    WHEN articles.title IS NOT excluded.title
+                      OR articles.summary IS NOT excluded.summary
+                    THEN 0 ELSE articles.is_scored END,
                 title = excluded.title,
                 summary = excluded.summary,
                 fetched_at = excluded.fetched_at
@@ -86,7 +104,12 @@ class Database:
             (url, title, pub_str, source_name, source_category, summary, raw_content, now),
         )
         self.conn.commit()
-        return cursor.lastrowid  # type: ignore[return-value]
+        if existing:
+            return existing["id"], False
+        row = self.conn.execute(
+            "SELECT id FROM articles WHERE url = ?", (url,)
+        ).fetchone()
+        return row["id"], True
 
     def get_unscored_articles(self) -> list[ArticleRow]:
         cursor = self.conn.execute(
@@ -112,7 +135,7 @@ class Database:
         signal_strength: float,
         composite_score: float,
     ) -> None:
-        now = datetime.utcnow().isoformat()
+        now = _utc_now_iso()
         self.conn.execute(
             """
             INSERT INTO scores (article_id, disruption_risk, business_impact,
@@ -142,7 +165,7 @@ class Database:
         self, since: str | None = None, limit: int = 25
     ) -> list[dict]:
         if since is None:
-            since = datetime.utcnow().isoformat()[:10]
+            since = _utc_now_iso()[:10]
         cursor = self.conn.execute(
             """
             SELECT a.id, a.url, a.title, a.published, a.source_name,

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Test Logistics Feed</title>
+    <link>https://example.com</link>
+    <description>Fixture feed for tests</description>
+    <item>
+      <title>Dockworkers strike shuts Port of Oakland as cargo backlog grows</title>
+      <link>https://example.com/news/oakland-strike</link>
+      <description><![CDATA[<p>Container <b>backlogs</b> are building after a labor dispute halted operations. Carriers warn of a $40 million weekly hit.</p>]]></description>
+      <pubDate>Mon, 26 Oct 2026 23:30:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Warehouse robotics market projected to grow to $9 billion by 2030</title>
+      <link>https://example.com/news/robotics-forecast</link>
+      <description>Analysts expect a 12% CAGR as automation adoption spreads.</description>
+      <pubDate>Mon, 26 Oct 2026 10:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Let us show you our new office</title>
+      <link>https://example.com/news/office-tour</link>
+      <description>A look around our redesigned headquarters.</description>
+      <pubDate>Mon, 26 Oct 2026 09:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Entry without a link is skipped</title>
+      <description>No link element here.</description>
+    </item>
+  </channel>
+</rss>

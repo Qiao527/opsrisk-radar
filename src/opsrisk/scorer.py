@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import re
-from typing import Pattern
+from re import Pattern
 
 from opsrisk.models import ArticleScore
-
 
 # Each dimension maps keywords to a score contribution.
 # A match in the title is weighted higher than a match in the summary.
@@ -88,7 +87,7 @@ _DIMENSION_KEYWORDS: dict[str, list[Pattern[str]]] = {
             r"\bprofit",
             r"\bloss(es)?\b",
             r"\bearnings",
-            r"\bGDP",
+            r"\b(?-i:GDP)\b",
             r"\binflation",
             r"\brecession",
             r"\btariff",
@@ -115,17 +114,17 @@ _DIMENSION_KEYWORDS: dict[str, list[Pattern[str]]] = {
             r"\bnearshor(e|ing)",
             r"\bfriend.?shor(e|ing)",
             r"\bsustainability",
-            r"\bESG\b",
+            r"\b(?-i:ESG)\b",
             r"\bautomation",
             r"\bdigital\s+transformation",
-            r"\bAI\b",
+            r"\b(?-i:AI)\b",
             r"\bblockchain",
-            r"\bIoT\b",
+            r"\b(?-i:IoT)\b",
             r"\brobot(ics|s)?\b",
             r"\bdiversification",
             r"\bdual\s+sourcing",
             r"\bjust.?in.?case",
-            r"\bVMI\b",
+            r"\b(?-i:VMI)\b",
             r"\bomnichannel",
             r"\bcircular\s+economy",
             r"\bcarbon",
@@ -171,8 +170,9 @@ _DIMENSION_KEYWORDS: dict[str, list[Pattern[str]]] = {
             r"\$\d+",
             r"\bbillion\b",
             r"\bmillion\b",
-            # Named entity patterns
-            r"\b(China|US|EU|UK|WTO|FMC|IATA|IMO)\b",
+            # Named entity patterns. Case-sensitive so the pronoun "us"
+            # is not mistaken for the United States.
+            r"\b(?-i:China|US|EU|UK|WTO|FMC|IATA|IMO)\b",
             # Specific timeframes
             r"\beffective\s+\w+\s+\d+",
             r"\bQ[1-4]\s+20\d{2}",
@@ -184,14 +184,18 @@ _DIMENSION_KEYWORDS: dict[str, list[Pattern[str]]] = {
 def _score_dimension(
     title: str, summary: str, keywords: list[Pattern[str]]
 ) -> float:
+    """Score one dimension on a 1-10 scale.
+
+    Each keyword contributes at most once: TITLE_WEIGHT if it matches the
+    title, otherwise SUMMARY_WEIGHT if it matches the summary.
+    """
     score = 0.0
     for pattern in keywords:
         if pattern.search(title):
             score += TITLE_WEIGHT
         elif pattern.search(summary):
             score += SUMMARY_WEIGHT
-    clamped = max(1.0, min(10.0, score))
-    return clamped
+    return max(1.0, min(10.0, score))
 
 
 # --- Market report detection ---
