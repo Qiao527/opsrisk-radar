@@ -1,0 +1,101 @@
+id,suggested_label,suggester,suggested_at,guide_version,rationale,evidence
+1,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,"Primarily an earnings-call story; rate/capacity commentary is secondary. Torn 0/1, chose lower.",third-quarter earnings call
+2,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,M&A terms.,acquisition of two terminal operators
+3,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Partnership / revenue expectation.,forms GSEO partnership
+4,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Regulatory proposal affecting shipping fuel costs; not in effect.,may soon begin compensating shipowners
+5,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Office opening.,new office in Johor Bahru
+6,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,"Vessel order (investment); orderbook trend is secondary. Torn 0/1, chose lower.","MSC orders 20 24,000-TEU vessels"
+7,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Tentative labor pact: risk ending.,reach tentative labor pact
+8,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Hiring at a plant.,Mack adds 270 staff
+9,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Profit forecast.,raised its full-year profit forecast
+10,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Conference session / opinion.,He led a session at EDGE 2026
+11,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Technology integration.,integrated Descartes Systems Group
+12,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Port volume statistics; no disruption.,increase in container traffic during September
+13,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Network change on a risk-affected route; capacity still below pre-attack levels.,48% of pre-Houthi attack levels
+14,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,"Typhoon-driven congestion is context for a capacity analysis; torn 1/2, chose lower.","Port congestion in Asia, caused by a succession of typhoons"
+15,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Port fees delayed again; not in effect.,delay implementation of planned port fees
+16,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,AI adoption opinion.,AI agents are easy
+17,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Order-slot rationing for 2027 trucks; supply constraint but not current interruption.,Volvo limits 2027 truck order slots
+18,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Company strategy analysis.,invests up front to win next wave of customers
+19,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Consumer spending forecast.,holiday season spending will rise 4.2%
+20,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,AI deployment.,deploying AI agents
+21,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,E-commerce channel strategy.,TikTok Shop carries risk
+22,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Plant investment.,Audi investing $4B to build its first US plant
+23,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Carrier ownership analysis.,new national carrier turns into a Chinese asset
+24,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Dated price increase; price change alone is not interruption.,UPS plans 5.9% rate increase on Dec. 21
+25,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Outlook report on supply chain risk forces.,forces will reshape supply chains
+26,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Earnings.,DSV reports solid Q3 earnings
+27,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Investment plan.,UPS Invests $2 Billion
+28,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,"Port delays mentioned but the story is a rate trend; torn 1/2, chose lower.",port delays still a strain on services
+29,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Regulatory and price pressure on importers; no interruption.,more stringent rules from the CBP
+30,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Fleet expansion.,boost tractor rental fleet by 10%
+31,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Infrastructure grant.,DOT grant for rail upgrade
+32,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Spot rate trend.,Spot rates on the lane have dropped
+33,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Technology report.,AI-powered control towers
+34,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Rate and capacity trend.,Freight rates are being driven to historic highs
+35,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,M&A; 'strikes deal' is not a labor strike.,strikes deal for UK's largest port operator
+36,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,AI opinion.,Agentic AI to bring outsized capabilities
+37,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Equipment purchase.,purchase of 500 new domestic containers
+38,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Labor standoff ended by arbitration: risk ended.,Arbitration ends long-running contract standoff
+39,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Capacity constraints from disruptions; trend.,capacity is being artificially skewed by global disruptions
+40,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Company positioning.,holds capital for Canadian project boom
+41,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Port volume statistics.,nine-month volume flat
+42,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Plant investment.,US Steel to invest nearly $3B
+43,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Investment plan.,eyes Vietnam rail freight depot network
+44,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Technology collaboration.,Accenture collaboration
+45,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Operating results.,stronger nine-month operating performance
+46,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Company-specific distribution problem after a past fire; no current interruption stated.,Due to a facility fire during Q3
+47,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,M&A commentary.,Insight on consol sector (and other) M&A
+48,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Port fee suspension extended; not in effect.,keep port fees targeting China-linked vessels on hold
+49,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Port funding.,"receives public, private funding for capacity boost"
+50,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,How-to article.,How to shift to a hybrid inventory strategy
+51,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Carrier expansion.,A. Duie Pyle expands in Ohio
+52,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,"Repair funding announcement; torn 0/1, chose lower.",made $1.6 billion in funds available
+53,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Appointment.,name John Atkins to leadership role
+54,2,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Concrete outage and disruption in a named region.,an outage at its United Arab Emirates
+55,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,AI opinion.,The next manufacturing AI challenge
+56,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,"Employment trend, not a risk event; torn 0/1, chose lower.",added jobs year over year
+57,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Earnings outlook.,raises 2026 outlook
+58,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Vessel order.,spend $1.6 billion on 12 new container ships
+59,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Commercial opportunity.,rail conversion opportunities
+60,2,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Tankers damaged in a named strait during an ongoing war.,7 tankers reported damaged in Hormuz
+61,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Award.,names finalists for 2026 leadership award
+62,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Aggregate pressure index.,Global Supply Chain Pressure Index
+63,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Corporate workforce strategy.,expand driver workforce
+64,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Modernization case study.,modernizing its distribution operations
+65,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,AI opinion.,Closing the AI adoption gap
+66,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Executive order requiring supply chain mapping; no interruption.,requires defense contractors to map their supply chains
+67,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,"Theft trend aggregated over the year; torn 1/2, chose lower.",stolen more than $150 million in AI equipment this year
+68,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Technology pilot.,Autonomous freight railcar builder
+69,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Management advice.,Six workforce strategies
+70,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,"Hurricane landfall forecast; no closure reported yet. Torn 1/2, chose lower.",could arrive by Friday night
+71,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,"Strategic plant closure (cost cutting), not a supply interruption.",PepsiCo shutters Tennessee bottling plant
+72,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Keynote / opinion.,during his keynote
+73,2,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Named ports closed by a typhoon.,Typhoon Champi closes Taiwan ports
+74,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Survey on AI use.,An annual survey of procurement professionals
+75,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,"The news is a supply deal; war-related production throttling is context. Torn 1/2, chose lower.",production has been throttled by the Iran war
+76,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Appointment.,names supply chain veteran as new port director
+77,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Ship valuation.,still commanding remarkable rates
+78,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,"Opinion at a conference; torn 0/1, chose lower.",Europe risks becoming a 'corpse'
+79,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Logistics index showing tight capacity.,Logistics Managers' Index
+80,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Ballot measure that could block automation; future.,Nov. 3 ballot measure
+81,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Management advice.,A four-step plan
+82,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Enforcement operation; no interruption.,joint operations targeting truckers
+83,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Divestiture.,sell FedEx Supply Chain to CMA CGM Group
+84,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Defense contract.,$7B F-35 fighter jet deal
+85,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Product strategy.,VW awaits Ford decision
+86,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Revenue outlook; Panama restrictions are context.,support carrier Q4 revenues
+87,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Customer service survey.,shippers increasingly want timely responses
+88,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Market strength commentary.,Breakbulk trade strength
+89,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Capacity trend with trade-restriction risk.,raising concerns that an expanding fleet could outpace demand
+90,2,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Named vessels damaged and barred from departing a named port.,prompting authorities to prohibit all three ships from departing
+91,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Airfreight rate trend.,airfreight rates climb above the highs
+92,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Explainer.,Who Is Insuring Your Goods
+93,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Call for more inspections; not in effect.,urge Coast Guard to increase Cosco ship inspections
+94,2,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Berthing delays at named ports after attacks.,lengthier berthing delays at the UAE ports of Fujairah and Khor Fakkan
+95,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,New fuel service.,begins regular ethanol bunkering operations
+96,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Vendor analysis of OTIF cost.,impose approximately $100 billion in annual economic impact
+97,1,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,"Carriers returning to Suez: risk easing, network change.",return to Suez route
+98,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,"Law directing a study; torn 0/1, chose lower.",directs the Department of Commerce to conduct a study
+99,2,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Tariff changes on named goods with a stated effective date.,effective Oct. 30
+100,0,"claude-opus-5-5 (Claude Code session, reading title+summary)",2026-10-26,1,Technology installation.,installs mobile hydrogen fueling devices

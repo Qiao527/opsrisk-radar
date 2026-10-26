@@ -8,11 +8,11 @@ from collections.abc import Callable
 from pathlib import Path
 
 from opsrisk import __version__, pipeline
+from opsrisk import evaluate as ev
 from opsrisk.brief import render_markdown, write_brief
 from opsrisk.config import AppConfig, load_config
 from opsrisk.database import Database
 from opsrisk.email_digest import generate_email_digest
-from opsrisk.evaluate import LabelError, evaluate, format_report, load_labels, rule_scorer
 from opsrisk.html_report import generate_daily_html, generate_weekly_html
 from opsrisk.log import setup_logging
 from opsrisk.report_data import load_daily_brief
@@ -24,7 +24,6 @@ from opsrisk.weekly import generate_weekly_report
 DEFAULT_DB = "data/opsrisk.db"
 DEFAULT_CONFIG = Path("config/sources.toml")
 REPORTS_DIR = Path("reports")
-EVAL_LABELS = Path("eval/labels.csv")
 
 
 def _banner(title: str) -> None:
@@ -95,22 +94,81 @@ def _cmd_source_audit(db: Database, cfg: AppConfig, args: argparse.Namespace) ->
     return 0
 
 
+def _eval_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--labels", choices=["human", "provisional"], default="human",
+                   help="human: eval/labels.csv; provisional: machine suggestions")
+    p.add_argument("--split", choices=["dev", "test", "all"], default="dev")
+    p.add_argument("--scorer", action="append", dest="scorers", metavar="NAME",
+                   help=f"Scorer(s) to compare (default: {SCORER_ID}); repeatable")
+    p.add_argument("--final", action="store_true",
+                   help="Required to evaluate on the frozen test split; the access is logged")
+
+
+def _load_eval_articles(args: argparse.Namespace) -> tuple[list[ev.LabeledArticle], int]:
+    if args.labels == "provisional":
+        return ev.load_suggestions(), 0
+    return ev.load_labels(ev.LABELS_CSV)
+
+
 def _cmd_evaluate(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
-    labels = EVAL_LABELS
-    try:
-        articles, unlabeled = load_labels(labels)
-    except FileNotFoundError:
-        print(f"Labels file not found: {labels}")
+    from opsrisk.scorers import build_scorer
+
+    if args.split != "dev" and not args.final:
+        print("The test split is frozen for final comparisons. Re-run with --final; "
+              "the access will be recorded in eval/test_access.jsonl.")
         return 1
-    except LabelError as exc:
-        print(f"Invalid labels file: {exc}")
+    try:
+        articles, unlabeled = _load_eval_articles(args)
+        dev_ids = ev.load_split("dev")
+        split_ids = ev.load_split(args.split)
+    except FileNotFoundError as exc:
+        print(f"Evaluation file not found: {exc.filename}")
+        return 1
+    except (ev.LabelError, ev.SplitError) as exc:
+        print(f"Invalid evaluation data: {exc}")
         return 1
     if not articles:
-        print(f"No labeled rows in {labels} yet ({unlabeled} unlabeled).")
+        print(f"No labeled rows in {ev.LABELS_CSV} yet ({unlabeled} unlabeled). "
+              "See docs/labeling_guide.md, or use --labels provisional to test the pipeline.")
         return 1
-    report = evaluate(articles, rule_scorer(cfg.scoring.composite_weights), unlabeled)
+
+    selected = [a for a in articles if split_ids is None or a.id in split_ids]
+    dev = [a for a in articles if dev_ids is None or a.id in dev_ids]
+    names = args.scorers or [SCORER_ID]
+    results = []
+    for name in names:
+        results.append(ev.run_scorer(name, build_scorer(name, cfg, dev=dev), selected))
+    if args.split != "dev":
+        ev.log_test_access(names, args.labels, {r.name: r.metrics for r in results})
+
     _banner("Scorer evaluation")
-    print(format_report(report))
+    if unlabeled:
+        print(f"({unlabeled} rows in {ev.LABELS_CSV} are still unlabeled)\n")
+    print(ev.format_comparison(results, selected, args.split, args.labels))
+    return 0
+
+
+def _agreement_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--other", type=Path, default=None,
+                   help="Second human label file (default: compare with machine suggestions)")
+
+
+def _cmd_agreement(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
+    try:
+        human, _ = ev.load_labels(ev.LABELS_CSV)
+        other = ev.load_labels(args.other)[0] if args.other else ev.load_suggestions()
+    except (FileNotFoundError, ev.LabelError) as exc:
+        print(f"Cannot compute agreement: {exc}")
+        return 1
+    result = ev.agreement(human, other)
+    if not result["n"]:
+        print("No rows are labeled in both sources yet.")
+        return 1
+    kappa = result["kappa"]
+    print(f"Rows compared: {result['n']}")
+    print(f"Exact agreement: {result['exact']:.2f}")
+    print(f"Cohen's kappa: {kappa:.2f}" if kappa is not None else "Cohen's kappa: n/a")
+    print("Confusion (first->second):", result["confusion"])
     return 0
 
 
@@ -157,6 +215,12 @@ def _cmd_status(db: Database, cfg: AppConfig, args: argparse.Namespace) -> int:
 
 
 Command = Callable[[Database, AppConfig, argparse.Namespace], int]
+ArgSpec = Callable[[argparse.ArgumentParser], None]
+
+COMMAND_ARGS: dict[str, ArgSpec] = {
+    "evaluate": _eval_args,
+    "agreement": _agreement_args,
+}
 
 COMMANDS: list[tuple[str, str, Command]] = [
     ("fetch", "Fetch RSS feeds into database", _cmd_fetch),
@@ -168,7 +232,8 @@ COMMANDS: list[tuple[str, str, Command]] = [
     ("source-audit", "Audit source quality metrics", _cmd_source_audit),
     ("run", "Fetch → Score → Brief (full pipeline)", _cmd_run),
     ("status", "Show recent pipeline runs", _cmd_status),
-    ("evaluate", "Measure ranking quality against eval/labels.csv", _cmd_evaluate),
+    ("evaluate", "Compare scorers on the labeled evaluation set", _cmd_evaluate),
+    ("agreement", "Inter-annotator agreement (Cohen's kappa)", _cmd_agreement),
 ]
 
 
@@ -188,7 +253,10 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Fail fetch/run if fewer feeds succeed (default: 0.5)")
     sub = parser.add_subparsers(title="commands", required=True)
     for name, help_text, func in COMMANDS:
-        sub.add_parser(name, help=help_text).set_defaults(func=func)
+        cmd = sub.add_parser(name, help=help_text)
+        cmd.set_defaults(func=func)
+        if name in COMMAND_ARGS:
+            COMMAND_ARGS[name](cmd)
     return parser
 
 

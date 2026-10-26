@@ -1,48 +1,66 @@
 # Evaluation set
 
-`labels.csv` holds real articles labeled by hand. `python -m opsrisk evaluate`
-re-scores each one with the current scorer and reports how well the ranking
-matches the labels.
+| File | What it is | Who writes it |
+|------|------------|---------------|
+| `labels.csv` | 100 real articles; the `label`, `labeler`, `labeled_at` columns hold **human** judgments | humans only |
+| `suggestions.csv` | a **machine-suggested** label for every row, with model id, rationale and a verbatim evidence quote | a model |
+| `splits.json` | frozen dev/test assignment and a fingerprint of the test articles | written once |
+| `test_access.jsonl` | one line per evaluation on the test split | the evaluator |
 
-## Labels
+Label definitions and the labeling procedure are in
+[`docs/labeling_guide.md`](../docs/labeling_guide.md).
 
-Fill the `label` column with one number per row. Leave it blank to skip.
+## Status (2026-10-26)
 
-| Label | Meaning | Examples |
-|-------|---------|----------|
-| **2: act** | A concrete event that is disrupting, or is about to disrupt, supply, logistics or production. An operations team would want to know today. | strike or lockout, port or plant closure, typhoon closing ports, parts shortage halting a line, tariff or ban taking effect on a set date, cyberattack on a carrier, supplier bankruptcy |
-| **1: watch** | Relevant to supply chain risk, but nothing is disrupted yet. | proposed regulation, tentative labor deal, rate or capacity trend, carrier network change, reshoring plans |
-| **0: noise** | Not an operational risk signal. | earnings and revenue, market-size forecasts, product launches, hires and partnerships, office openings, opinion pieces, event promotion |
+- **Human labels: 0 / 100.** No accuracy claim in this repository is based on
+  human judgment yet.
+- Machine suggestions: 100 / 100 (65 noise, 29 watch, 6 act), produced by
+  `claude-opus-5-5` in a Claude Code session from the title and summary,
+  following guide version 1. Every evidence quote is checked to be a verbatim
+  substring of the article text.
 
-Rules of thumb:
+## Protocol
 
-- Judge the **event**, not the wording. "Labor pact reached" is the end of a risk (usually 1), even though it mentions labor.
-- If you hesitate between two labels, pick the lower one and write why in `note`.
-- Use only the title and summary in the sheet. Open the `url` only when the title is genuinely ambiguous.
-- The sheet does not show the scorer's opinion on purpose, so it can't anchor your labels.
+1. **Temporal split, frozen before scorer development.** Articles published on
+   or before 2026-10-21 are *dev* (42); later ones are *test* (58). Rules are
+   written before the news they score, so testing on later articles mirrors
+   deployment. The split was frozen before any scorer after `rules-v1` existed.
+2. **Dev is for error analysis and threshold choice.** `opsrisk evaluate`
+   defaults to dev.
+3. **Test is for the final comparison only.** It requires `--final`, verifies
+   the test articles' fingerprint, and appends to `test_access.jsonl`.
+4. **Human and machine labels never mix.** `--labels provisional` evaluates
+   against suggestions and prints a warning on every report.
+5. **Leakage controls.** No near-duplicate titles exist across the set (max
+   title Jaccard < 0.5; checked with the ingestion dedup function). A
+   *source-prior* baseline (leave-one-out on dev) shows how much ranking
+   could be achieved from the publisher alone. Text is normalized exactly as
+   in the pipeline before scoring.
+6. **Ties.** Rule scorers produce many equal scores. Every ranking metric is
+   the exact expectation under random tie order (tie-aware DCG), so results do
+   not depend on CSV order. The share of tied scores is reported.
 
-## Running
+## Metrics
+
+Precision@5/@10 (act; act+watch), Recall@10 for act, nDCG@10 with gains
+act=3, watch=1, noise=0, and alert precision/recall at the HIGH (≥ 7) and
+MEDIUM (≥ 4) bands. nDCG and recall carry 95% percentile-bootstrap intervals
+(1,000 resamples, fixed seed). With 2 act articles in dev and 4 in test, act
+metrics have very wide intervals; treat them as directional.
+
+## Commands
 
 ```bash
-python -m opsrisk evaluate
+python -m opsrisk evaluate                                   # human labels, dev
+python -m opsrisk evaluate --labels provisional \
+    --scorer rules-v1 --scorer baseline-source-prior         # pipeline check
+python -m opsrisk evaluate --split test --final              # final comparison
+python -m opsrisk agreement                                  # human vs suggestions (kappa)
+python -m opsrisk agreement --other eval/labels_b.csv        # two human labelers
 ```
 
-The report prints precision@5 and @10 (for "act only" and "act + watch"),
-recall of act articles in the top 10, every act article the scorer rated below
-MEDIUM, and every noise article it rated MEDIUM or higher.
+## Adding data
 
-Many articles share the floor score of 1.0, so precision is computed as the
-expected value under random tie-breaking. Shuffling the CSV does not change
-the result.
-
-## How the sample was drawn
-
-```bash
-python -m opsrisk --db data/eval_source.db fetch
-python scripts/sample_for_labeling.py --db data/eval_source.db --n 100 --seed 42
-```
-
-100 articles drawn at random (seed 42) from the 150 that the enabled feeds
-returned on 2026-10-26. One day of news contains few real disruptions, so
-the "act" class will be small. Add later batches to grow it rather than
-relabeling this one.
+Draw new batches with `scripts/sample_for_labeling.py` from a later fetch and
+append them as a new test batch; never edit frozen rows (the fingerprint
+check fails if article text in the test split changes).
