@@ -5,25 +5,11 @@ from dataclasses import dataclass
 
 from opsrisk.database import Database
 from opsrisk.scorer import MARKET_RESEARCH_SOURCES
-from opsrisk.signals import MEDIUM_THRESHOLD
+from opsrisk.signals import MEDIUM_THRESHOLD, is_market_report
 
 # ---------------------------------------------------------------------------
 # Display-only pattern matchers (not scoring logic)
 # ---------------------------------------------------------------------------
-
-_MARKET_REPORT_PATTERNS = [
-    re.compile(r, re.IGNORECASE)
-    for r in [
-        r"\bmarket\s+(projected|forecast|expected|predicted)\s+to\s+(grow|reach|exceed|be\s+worth|top|expand|increase)",
-        r"\bmarket\s+(size|valuation)\s+(to\s+)?(grow|reach|exceed|be|worth)",
-        r"\brevenue(s)?\s+to\s+(exceed|reach|grow|soar|rise|approach)",
-        r"\bCAGR\b",
-        r"\bforecast\s+to\s+reach\b",
-        r"\bprojected\s+to\s+grow\b",
-        r"\bworth\s+(more\s+than\s+)?\$?\d+\.?\d*\s+(billion|million|trillion)",
-        r"\breach(es|ed|ing)?\s+\$?\d+\.?\d*\s+(billion|million|trillion)",
-    ]
-]
 
 _EARNINGS_NOISE_PATTERNS = [
     re.compile(r, re.IGNORECASE)
@@ -136,7 +122,7 @@ def audit_sources(db: Database) -> list[SourceReport]:
         market_count = sum(
             1
             for r in title_rows
-            if _matches_any(r["title"], _MARKET_REPORT_PATTERNS)
+            if is_market_report(r["title"])
         )
         earnings_count = sum(
             1
