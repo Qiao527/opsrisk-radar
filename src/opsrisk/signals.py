@@ -137,3 +137,33 @@ MARKET_REPORT_PATTERNS: list[re.Pattern[str]] = _compile(
 
 def is_market_report(text: str) -> bool:
     return any(p.search(text) for p in MARKET_REPORT_PATTERNS)
+
+
+# ---------------------------------------------------------------------------
+# Event categories and assessment levels (rules-v2, llm-v1)
+# ---------------------------------------------------------------------------
+
+CATEGORY_LABELS: dict[str, str] = {
+    "closure_stoppage": "Closure / stoppage",
+    "labor_action": "Labor action",
+    "attack_security": "Attack / security",
+    "cyber_outage": "Cyber / outage",
+    "accident": "Accident",
+    "severe_weather": "Severe weather",
+    "congestion_delay": "Congestion / delay",
+    "shortage": "Shortage",
+    "trade_measure": "Trade measure",
+    "insolvency_recall": "Insolvency / recall",
+    "conflict": "Conflict",
+    "disruption": "Disruption (general)",
+    "market_trend": "Market trend",
+    "regulation": "Regulation",
+    "other": "Other",
+}
+
+LEVEL_LABELS: dict[str, str] = {
+    "act": "Act: interruption under way or dated",
+    "watch": "Watch: risk-relevant, not interrupting",
+    "relevant": "Context: supply chain news",
+    "noise": "Noise: not a risk signal",
+}
