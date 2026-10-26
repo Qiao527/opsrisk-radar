@@ -11,3 +11,5 @@ node_modules/
 .DS_Store
 data/*.db-shm
 data/*.db-wal
+build/
+dist/

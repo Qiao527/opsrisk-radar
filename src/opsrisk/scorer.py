@@ -4,6 +4,7 @@ import re
 from re import Pattern
 
 from opsrisk.models import ArticleScore
+from opsrisk.signals import is_market_report
 
 # Each dimension maps keywords to a score contribution.
 # A match in the title is weighted higher than a match in the summary.
@@ -198,37 +199,7 @@ def _score_dimension(
     return max(1.0, min(10.0, score))
 
 
-# --- Market report detection ---
-# Articles that are pure market-size forecasts should have their
-# business_impact de-weighted because the dollar figures they cite
-# are projections, not actual financial impacts.
-
-_MARKET_REPORT_PATTERNS = [
-    re.compile(r, re.IGNORECASE)
-    for r in [
-        # "market [projected|forecast] to [grow|reach|exceed|...]"
-        r"market\s+(projected|forecast|expected|predicted)\s+to\s+(grow|reach|exceed|be\s+worth|top|expand|increase)",
-        # "market size/valuation to grow/reach"
-        r"market\s+(size|valuation)\s+(to\s+)?(grow|reach|exceed|be|worth)",
-        # "revenue(s) to exceed/reach/grow"
-        r"revenue(s)?\s+to\s+(exceed|reach|grow|soar|rise|approach)",
-        # "to be worth $X"
-        r"to\s+be\s+worth\s+\$?\d",
-        # "is/was valued/estimated at $X"
-        r"(is|was)\s+(valued|estimated)\s+at\s+\$?\d",
-        # "market worth $X" — also catches "Market ... Worth $X" with intervening text
-        r"\bmarket\b.{0,60}\bworth\b",
-        r"\bCAGR\b",
-        r"forecast\s+to\s+reach",
-        r"projected\s+to\s+grow",
-        r"market\s+(is\s+)?(projected|forecast|expected)\s+to",
-        # Broader forward-projection language
-        r"\bworth\s+(more\s+than\s+)?\$?\d+\.?\d*",
-        r"\breach(es|ed|ing)?\s+\$?\d+\.?\d*\s+(billion|million|trillion)",
-        r"\bsoar(s|ed|ing)?\s+to\s+\$?\d+\.?\d*\s+(billion|million|trillion)",
-        r"\bgrow(s|n|ing)?\s+to\s+\$?\d+\.?\d*\s+(billion|million|trillion)",
-    ]
-]
+# --- Market report detection: see opsrisk.signals.MARKET_REPORT_PATTERNS ---
 
 # Penalty multipliers for scores that should be de-emphasized.
 # Applied after clamping, floored at 1.0.
@@ -238,15 +209,6 @@ MARKET_REPORT_STRAT_PENALTY = 0.50  # also reduce strategic_relevance for foreca
 # Sources that are predominantly long-term market research rather than
 # operational risk reporting.  Penalty applies to business_impact only.
 MARKET_RESEARCH_SOURCES = {"Interact Analysis"}
-
-
-def _is_market_report(title: str, summary: str) -> bool:
-    """Return True if the article reads as a market-size forecast/report."""
-    text = f"{title} {summary}"
-    for pattern in _MARKET_REPORT_PATTERNS:
-        if pattern.search(text):
-            return True
-    return False
 
 
 def _apply_penalties(
@@ -259,7 +221,7 @@ def _apply_penalties(
     adjusted = dict(raw)
 
     # Market report penalty: de-weight business_impact (+ strategic_relevance)
-    if _is_market_report(title, summary):
+    if is_market_report(f"{title} {summary}"):
         adjusted["business_impact"] = max(
             1.0, adjusted["business_impact"] * MARKET_REPORT_BIZ_PENALTY
         )

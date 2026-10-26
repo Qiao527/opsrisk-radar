@@ -1,6 +1,6 @@
 # Architecture
 
-OpsRisk Radar has six commands built on a shared ETL core: fetch, store, score, brief, validate, and weekly. Each command is backed by a discrete Python module.
+OpsRisk Radar is a small ETL pipeline: fetch RSS feeds, store them in SQLite, score each article, then render reports. Each stage is a separate module, and every report reads its data through one module (`report_data.py`) and classifies articles with one set of rules (`signals.py`).
 
 ## Pipeline Overview
 
@@ -9,12 +9,35 @@ flowchart LR
     CFG[config/sources.toml] --> F[feed.py]
     F --> DB[(SQLite)]
     DB --> S[scorer.py]
-    S --> BR[brief.py]
-    BR --> OUT[briefs/Y-m-d.md]
+    S --> DB
+    DB --> RD[report_data.py]
+    RD --> BR[brief.py<br/>daily Markdown]
+    RD --> W[weekly.py<br/>weekly Markdown]
+    RD --> H[html_report.py<br/>daily + weekly HTML]
+    RD --> E[email_digest.py]
     DB --> V[validate.py]
-    DB --> W[weekly.py]
-    W --> WO[briefs/weekly/]
+    DB --> A[source_audit.py]
+    SIG[signals.py<br/>severity, themes,<br/>market forecasts] -.-> S
+    SIG -.-> RD
+    SIG -.-> A
 ```
+
+## Module Map
+
+| Module | Responsibility |
+|--------|----------------|
+| `config.py` | Load `config/sources.toml` into an `AppConfig` |
+| `feed.py` | Fetch and parse RSS feeds concurrently |
+| `database.py` | SQLite schema and all article/score queries |
+| `scorer.py` | Keyword scoring, penalties, composite score |
+| `signals.py` | Shared rules: severity bands, `SeverityCounts`, risk themes, market-forecast detection |
+| `report_data.py` | The daily article window and `WeeklyStats` aggregations |
+| `brief.py`, `weekly.py` | Markdown renderers |
+| `html_report.py`, `email_digest.py` | HTML renderers; CSS lives in `assets/` |
+| `validate.py`, `source_audit.py` | Data quality checks and per-source metrics |
+| `__main__.py` | CLI: one config/DB lifecycle shared by all commands |
+
+Renderers never query the database or re-derive severity themselves. A threshold or theme keyword changed in `signals.py` changes every report at once, and snapshot tests (`tests/test_report_snapshots.py`) catch any unintended change in output.
 
 ## Stage 1: Configuration
 
@@ -71,15 +94,15 @@ The scoring engine is documented in detail in [methodology.md](methodology.md). 
 3. `compute_composite()` calculates the weighted average
 4. `make_article_score()` orchestrates all three and returns an `ArticleScore`
 
-The scorer is called by `__main__.py`'s `_run_score()` function, which iterates over unscored articles, retrieves each article's title and summary from the database, scores it, and persists the result.
+The scorer is called by `__main__.py`'s `_run_score()` function, which iterates over unscored articles, scores each title and summary, and persists the result. Market-forecast detection comes from `signals.py`, so the source audit counts forecasts with exactly the rules scoring penalizes.
 
 ## Stage 5: Brief Generation
 
 **File:** `src/opsrisk/brief.py`
 
-`generate_brief()` takes scored article rows from the database and assembles them into a `DailyBrief` domain object. The brief:
+`report_data.load_daily_brief()` loads articles scored today (falling back to the last 7 days) and builds a `DailyBrief`. The same window feeds the daily HTML report and the email digest. The Markdown brief:
 
-1. Assigns a severity label (CRITICAL / HIGH / MEDIUM / LOW) based on the composite score
+1. Assigns a severity label (CRITICAL / HIGH / MEDIUM / LOW) from `signals.severity_label`
 2. Renders a `top_risks` summary table of the top 5 articles by composite score
 3. Provides a `_category_group()` breakdown with per-article score bars, source metadata, and the first ~300 characters of each summary
 4. Appends a methodology note explaining the scoring dimensions
@@ -103,7 +126,7 @@ Returns `True` if all checks pass, `False` otherwise. The CLI uses the return co
 
 **File:** `src/opsrisk/weekly.py`
 
-`generate_weekly_report(db, briefs_dir)` queries the last 7 days of scored articles and produces a Markdown trend report under `briefs/weekly/YYYY-MM-DD.md`. The report includes:
+`report_data.build_weekly_stats()` aggregates the last 7 days of scored articles into a `WeeklyStats` object. `weekly.py` renders it as Markdown under `briefs/weekly/YYYY-MM-DD.md` and `html_report.py` renders the same object as HTML, so the two versions cannot disagree. The report includes:
 
 1. **Executive summary** with severity distribution bar chart
 2. **Top 5 signals** by composite score
@@ -114,13 +137,13 @@ Returns `True` if all checks pass, `False` otherwise. The CLI uses the return co
 7. **Risk theme frequency analysis** using keyword pattern matching against article titles
 8. **Data quality note** referencing the validate command
 
-All data comes from the existing `articles` and `scores` tables via SQL aggregation. No scoring logic is invoked during report generation.
+No scoring logic is invoked during report generation.
 
 ## CLI Entry Point
 
 **File:** `src/opsrisk/__main__.py`
 
-The `opsrisk` CLI exposes six subcommands:
+The `opsrisk` CLI exposes eight subcommands:
 
 | Command | Action |
 |---------|--------|
@@ -129,6 +152,8 @@ The `opsrisk` CLI exposes six subcommands:
 | `brief` | Generate daily brief |
 | `validate` | Run data quality checks |
 | `weekly` | Generate weekly trend report |
+| `html` | Generate HTML reports and the email digest |
+| `source-audit` | Print per-source quality metrics |
 | `run` | Fetch -> Score -> Brief (full pipeline) |
 
-Each subcommand loads configuration, instantiates the database, runs its stage, and closes the connection. This design lets each stage be run independently for debugging or incremental operation.
+Commands are registered in one `COMMANDS` table. `main()` loads the configuration and opens the database once, passes both to the command, and returns the command's exit code. Each stage can still be run on its own for debugging or incremental operation.

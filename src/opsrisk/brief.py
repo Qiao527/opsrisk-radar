@@ -1,43 +1,12 @@
+"""Render the daily brief as Markdown."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 from opsrisk import __version__
-from opsrisk.models import Article, ArticleScore, DailyBrief, ScoredArticle
-
-
-def _maybe_parse_dt(val: str | datetime | None) -> datetime | None:
-    if val is None:
-        return None
-    if isinstance(val, datetime):
-        return val
-    try:
-        return datetime.fromisoformat(val)
-    except (ValueError, TypeError):
-        return None
-
-_SEVERITY_LABEL = [
-    (9.0, "CRITICAL"),
-    (7.0, "HIGH"),
-    (4.0, "MEDIUM"),
-    (0.0, "LOW"),
-]
-
-_RISK_BAR = {
-    "CRITICAL": "|",
-    "HIGH": "|",
-    "MEDIUM": "|",
-    "LOW": "|",
-}
-
-
-def _severity_label(score: float) -> str:
-    for threshold, label in _SEVERITY_LABEL:
-        if score >= threshold:
-            return label
-    return "LOW"
+from opsrisk.models import DailyBrief, ScoredArticle
+from opsrisk.signals import severity_label
 
 
 def _risk_bars(composite: float) -> str:
@@ -52,7 +21,7 @@ def _build_summary_table(brief: DailyBrief) -> str:
         "|---|----------|--------|--------|",
     ]
     for i, sa in enumerate(brief.top_risks, 1):
-        sev = _severity_label(sa.score.composite_score)
+        sev = severity_label(sa.score.composite_score)
         title = sa.article.title[:60]
         src = sa.article.source_name
         lines.append(
@@ -63,10 +32,8 @@ def _build_summary_table(brief: DailyBrief) -> str:
 
 def _category_group(articles: list[ScoredArticle]) -> str:
     parts: list[str] = []
-    for sa in sorted(
-        articles, key=lambda a: a.score.composite_score, reverse=True
-    ):
-        sev = _severity_label(sa.score.composite_score)
+    for sa in sorted(articles, key=lambda a: a.score.composite_score, reverse=True):
+        sev = severity_label(sa.score.composite_score)
         bars = _risk_bars(sa.score.composite_score)
         cat = sa.article.source_category.capitalize()
         pub = (
@@ -129,45 +96,11 @@ def _scoring_methodology_note(weights: dict[str, float] | None = None) -> str:
     )
 
 
-def generate_brief(
-    rows: list[dict[str, Any]],
-) -> DailyBrief:
-    scored: list[ScoredArticle] = []
-    for r in rows:
-        article = Article(
-            url=r["url"],
-            title=r["title"],
-            published=_maybe_parse_dt(r["published"]),
-            source_name=r["source_name"],
-            source_category=r["source_category"],
-            summary=r.get("summary", ""),
-        )
-        score = ArticleScore(
-            article_id=r["id"],
-            disruption_risk=r["disruption_risk"],
-            business_impact=r["business_impact"],
-            strategic_relevance=r["strategic_relevance"],
-            actionability=r["actionability"],
-            signal_strength=r["signal_strength"],
-            composite_score=r["composite_score"],
-        )
-        scored.append(ScoredArticle(article=article, score=score))
-
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    brief = DailyBrief(
-        date=today,
-        articles=scored,
-        generated_at=datetime.now(timezone.utc).isoformat(),
-    )
-    return brief
-
-
 def render_markdown(
     brief: DailyBrief, weights: dict[str, float] | None = None
 ) -> str:
-    total = len(brief.articles)
-    high = brief.high_risk_count
-    med = brief.medium_risk_count
+    counts = brief.severity
+    total, high, med, low = counts.total, counts.high, counts.medium, counts.low
 
     lines = [
         "# OpsRisk Radar — Daily Brief",
@@ -177,7 +110,7 @@ def render_markdown(
         "",
         f"Scanned **{total}** signal(s). "
         f"**{high}** high-risk, **{med}** medium-risk, "
-        f"{total - high - med} low-risk signal(s) identified.",
+        f"{low} low-risk signal(s) identified.",
         "",
         "## Top Signals",
         "",
@@ -202,9 +135,12 @@ def render_markdown(
     return "\n".join(lines)
 
 
+def write_report(path: Path, content: str) -> Path:
+    """Write a generated report, creating its directory if needed."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    return path
+
+
 def write_brief(brief_dir: str | Path, markdown: str, date_str: str) -> Path:
-    out_dir = Path(brief_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"{date_str}.md"
-    out_path.write_text(markdown)
-    return out_path
+    return write_report(Path(brief_dir) / f"{date_str}.md", markdown)

@@ -184,10 +184,14 @@ opsrisk-radar/
 │   ├── database.py       # SQLite schema and operations
 │   ├── feed.py           # RSS feed fetching and parsing
 │   ├── scorer.py         # Rule-based risk scoring engine
-│   ├── brief.py          # Markdown brief generator
+│   ├── signals.py        # Shared rules: severity bands, risk themes, market forecasts
+│   ├── report_data.py    # Daily article window and weekly aggregations
+│   ├── brief.py          # Daily Markdown brief
+│   ├── weekly.py         # Weekly Markdown report
+│   ├── html_report.py    # Daily and weekly HTML reports
+│   ├── email_digest.py   # Compact email digest
+│   ├── assets/           # Report stylesheets
 │   ├── validate.py       # Data quality validation
-│   ├── weekly.py         # Weekly trend report generator
-│   ├── html_report.py    # HTML daily/weekly reports and email digest
 │   ├── source_audit.py   # Per-source signal quality metrics
 │   └── __main__.py       # CLI entry point
 ├── tests/                # pytest suite with a fixture RSS feed
