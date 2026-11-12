@@ -30,6 +30,7 @@ class ScoringConfig:
 
 @dataclass
 class LLMConfig:
+    provider: str = "anthropic"
     model: str = "claude-opus-5-5"
     max_calls_per_run: int = 200
 
@@ -60,8 +61,11 @@ def load_config(path: Path | None = None) -> AppConfig:
             ),
         )
     if "llm" in raw:
+        provider = raw["llm"].get("provider", config.llm.provider)
         config.llm = LLMConfig(
-            model=raw["llm"].get("model", config.llm.model),
+            provider=provider,
+            model=raw["llm"].get("model", "deepseek-flash" if provider == "deepseek"
+                                 else config.llm.model),
             max_calls_per_run=int(raw["llm"].get("max_calls_per_run",
                                                  config.llm.max_calls_per_run)),
         )

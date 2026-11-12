@@ -8,6 +8,7 @@ it is reproducible and a failed run never leaves half-updated data:
     data/history/index.json          available days and weeks
     data/history/YYYY-MM-DD.json     stories first seen that UTC day
     data/weekly/YYYY-Www.json        weekly aggregates
+    data/monthly/YYYY-MM.json        calendar-month aggregates
     data/status.json                 recent runs and per-feed results
 
 Freshness is computed at build time and again in the browser, so a page that
@@ -57,7 +58,12 @@ def explain(detail: dict[str, Any]) -> dict[str, Any]:
 
 
 def _article(row: dict[str, Any], also: dict[int, list[str]]) -> dict[str, Any]:
-    exp = explain(row.get("detail") or {})
+    detail = row.get("detail") or {}
+    exp = explain(detail)
+    llm = detail.get("llm")
+    origin = "ai" if isinstance(llm, dict) else (
+        "fallback" if isinstance(llm, str) and llm.startswith("fallback") else "rules"
+    )
     return {
         "id": row["id"],
         "title": row["title"],
@@ -75,6 +81,7 @@ def _article(row: dict[str, Any], also: dict[int, list[str]]) -> dict[str, Any]:
         "evidence": exp["evidence"],
         "reason": exp["reason"],
         "method": exp["method"],
+        "analysis_origin": origin,
         "flags": exp["flags"],
         "also_reported_by": sorted(set(also.get(row["id"], []))),
     }
@@ -130,6 +137,7 @@ def build_site(db: Database, out: Path, now: datetime | None = None,
         shutil.rmtree(data)
     (data / "history").mkdir(parents=True)
     (data / "weekly").mkdir()
+    (data / "monthly").mkdir()
 
     latest_rows = _rows_between(db, now - timedelta(days=LATEST_DAYS), now + timedelta(seconds=1))
     latest = [_article(r, also) for r in latest_rows]
@@ -168,7 +176,30 @@ def build_site(db: Database, out: Path, now: datetime | None = None,
         week_index.append({"week": week, "start": stats.week_start, "end": stats.week_end,
                            "total": stats.total})
 
-    _write(data / "history" / "index.json", {"days": days, "weeks": week_index})
+    month_index = []
+    end = (today.replace(day=28) + timedelta(days=4)).replace(day=1)
+    for _ in range(3):
+        start = (end - timedelta(days=1)).replace(day=1)
+        rows = _rows_between(db, start, min(end, now + timedelta(seconds=1)))
+        if rows:
+            month = start.strftime("%Y-%m")
+            stats = build_weekly_stats(rows)
+            payload = {
+                "month": month, "start": stats.week_start, "end": stats.week_end,
+                "total": stats.total, "source_count": stats.source_count,
+                "severity": {"high": stats.severity.high, "medium": stats.severity.medium,
+                             "low": stats.severity.low},
+                "top": [_article(r, also) for r in stats.top_signals],
+                "themes": [{"name": s.name, "count": s.count, "pct": s.pct}
+                           for s in stats.theme_shares],
+            }
+            _write(data / "monthly" / f"{month}.json", payload)
+            month_index.append({"month": month, "start": stats.week_start,
+                                "end": stats.week_end, "total": stats.total})
+        end = start
+
+    _write(data / "history" / "index.json", {"days": days, "weeks": week_index,
+                                            "months": month_index})
     _write(data / "status.json", status)
 
     assets = files("opsrisk").joinpath("assets", "site")
@@ -217,4 +248,7 @@ def check_site(out: Path) -> list[str]:
     for day in index["days"]:
         if not (out / "data/history" / f"{day['date']}.json").is_file():
             problems.append(f"history index lists missing day {day['date']}")
+    for month in index.get("months", []):
+        if not (out / "data/monthly" / f"{month['month']}.json").is_file():
+            problems.append(f"history index lists missing month {month['month']}")
     return problems

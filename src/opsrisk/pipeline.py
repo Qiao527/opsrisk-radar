@@ -94,7 +94,9 @@ def fetch(db: Database, cfg: AppConfig, run_id: int | None = None,
     for failure in summary.failed:
         print(f"  [WARN] {failure}")
 
-    if summary.feeds_total and summary.feeds_ok / summary.feeds_total < min_ok_ratio:
+    if not summary.feeds_total:
+        raise PipelineError("no enabled feeds to fetch")
+    if summary.feeds_ok / summary.feeds_total < min_ok_ratio:
         raise PipelineError(
             f"only {summary.feeds_ok}/{summary.feeds_total} feeds succeeded "
             f"(minimum {min_ok_ratio:.0%})"
@@ -121,10 +123,13 @@ class ArticleScorer:
         self.hybrid = None
         if self.name == "hybrid-v1":
             from opsrisk.hybrid import HybridScorer
-            from opsrisk.llm_scorer import LLMCache, LLMScorer
+            from opsrisk.llm_scorer import DeepSeekMessages, LLMCache, LLMScorer
 
+            if cfg.llm.provider not in {"anthropic", "deepseek"}:
+                raise PipelineError(f"unknown LLM provider {cfg.llm.provider!r} in config")
             cache = LLMCache(Path(cfg.data_dir) / "llm_cache.db")
             self.hybrid = HybridScorer(LLMScorer(model=cfg.llm.model, cache=cache,
+                                                 client=DeepSeekMessages() if cfg.llm.provider == "deepseek" else None,
                                                  max_calls=cfg.llm.max_calls_per_run))
         elif self.name not in {"rules-v1", "rules-v2"}:
             raise PipelineError(f"unknown scorer {self.name!r} in config")

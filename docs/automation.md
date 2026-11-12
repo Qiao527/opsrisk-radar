@@ -51,9 +51,18 @@ failure report.
 2. Actions → Pipeline → Run workflow, with `allow_fresh_db` checked.
 3. Optional email digest: secrets `RESEND_API_KEY`, `REPORT_EMAIL_TO`,
    `REPORT_EMAIL_FROM`.
-4. Optional hybrid scoring: secret `ANTHROPIC_API_KEY`, pass it to the
-   "Fetch and score" step, and set `[scoring] scorer = "hybrid-v1"`. This
-   incurs API cost; see [methodology.md](methodology.md#cost-and-latency).
+4. Optional hybrid scoring requires installing `.[llm]`, setting secret
+   `ANTHROPIC_API_KEY` as an environment variable for the "Fetch and score"
+   step, and setting `[scoring] scorer = "hybrid-v1"`. The workflow currently
+   installs the base package and does not pass that secret; configuring only
+   the scorer will fall back to rules. API calls cost money and send titles and
+   summaries to Anthropic; set a call budget and test with a separate database
+   first. See [methodology.md](methodology.md#choosing-the-default).
+
+   For DeepSeek, use `[llm] provider = "deepseek"` and pass
+   `DEEPSEEK_API_KEY` to the step instead. The workflow does not pass either
+   provider's key by default. Scheduled runs and any calls incur the configured
+   usage and cost; the included daily schedule is not real-time alerting.
 
 ## Rollback
 

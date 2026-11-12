@@ -78,7 +78,7 @@ When torn between two labels, choose the **lower** one and say why in `note`.
 - Use the `url` only when the title and summary are genuinely ambiguous; the
   scorers only see title and summary, so labels should too.
 - A second labeler should independently label at least 30 rows into a copy
-  (`eval/labels_b.csv`); `opsrisk eval agreement` reports Cohen's κ. Rows
+  (`eval/labels_b.csv`); `opsrisk agreement` reports Cohen's κ. Rows
   where labelers disagree are discussed and the guide amended.
 
 ## Machine suggestions are not labels

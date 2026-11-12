@@ -61,6 +61,23 @@ python -m opsrisk agreement --other eval/labels_b.csv        # two human labeler
 
 ## Adding data
 
-Draw new batches with `scripts/sample_for_labeling.py` from a later fetch and
-append them as a new test batch; never edit frozen rows (the fingerprint
-check fails if article text in the test split changes).
+Draw a separate blind batch from a later fetch:
+
+```bash
+python scripts/sample_for_labeling.py --db data/opsrisk.db --n 100 \
+  --after 2026-10-26 --exclude eval/labels.csv --out eval/new_batch.csv
+```
+
+The CSV has blank human label fields and contains no scores. The cutoff is an
+exclusive UTC date based on when the database first saw each article, not its
+publication date. Set it after the final scorer change being evaluated; the
+date above is an example, not a guarantee that the batch is unseen. Repeat
+`--exclude` for every previous batch: canonical URLs are excluded, and new IDs
+start above the largest ID in those files. The CSV records the cutoff, seed,
+sampling time and first-seen time; retain the exclusion files and database
+snapshot to reproduce the selection. Near-duplicate stories or articles seen
+outside these files can still leak into a batch and require review.
+
+The evaluator currently uses the original `labels.csv` and `splits.json`; it does
+not automatically register a new batch. Keep the new file separate until a new
+split is prepared, and never edit frozen test rows.

@@ -140,3 +140,39 @@ better than v1. The hybrid should become the default only if, on **human**
 labels, it beats rules-v2.1 on the test split by more than the bootstrap
 interval width, at an acceptable measured cost. Until then it remains an
 opt-in (`[scoring] scorer = "hybrid-v1"`).
+
+To try it locally, install the optional `llm` extra and configure
+`ANTHROPIC_API_KEY` in your environment. In a separate copy of the TOML config,
+set `scorer = "hybrid-v1"` under `[scoring]` and set a small
+`max_calls_per_run` under `[llm]`, then pass that copy with `--config` and a
+separate test database with `--db`. The scorer sends article titles and
+summaries to Anthropic, and calls incur charges. Switching scorers on an existing
+database can rescore previously stored articles, up to the configured call
+budget; use an isolated database for the first trial. A missing SDK, missing
+credentials, exhausted budget, or invalid response falls back to rules.
+
+The dashboard labels each story as AI-reviewed, rule-scored, or a rule fallback;
+it does not present a fallback as an AI assessment. Aggregate charts and
+periodic summaries are calculated from stored scores, not written by the model.
+Live API behavior and quality have not yet been verified in this project.
+
+### Optional DeepSeek connection
+
+DeepSeek can be selected instead of Anthropic without installing another SDK.
+In a separate copy of the existing feed config, set `scorer = "hybrid-v1"` in
+the existing `[scoring]` section and add:
+
+```toml
+[llm]
+provider = "deepseek"
+model = "deepseek-flash"
+max_calls_per_run = 5
+```
+
+Set `DEEPSEEK_API_KEY` in the process environment before running; the project
+does not automatically load `.env`. Use a separate test database and a small
+call budget. Titles and summaries are sent to DeepSeek and calls may incur
+charges. The provider uses [DeepSeek JSON output](https://api-docs.deepseek.com/guides/json_mode/)
+and validates evidence locally; malformed responses and API failures fall back
+to rules. Usage reports token counts but does not estimate DeepSeek cost. The
+connection has only been tested with simulated responses, not the live API.

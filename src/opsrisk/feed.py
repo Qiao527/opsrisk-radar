@@ -15,6 +15,7 @@ import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from urllib.parse import urlsplit
 
 import feedparser
 import httpx
@@ -95,10 +96,16 @@ def parse_feed(text: str, source: FeedSource) -> tuple[str, list[Article], str]:
         title = clean_text(entry.get("title"))
         if not link.startswith(("http://", "https://")) or not title:
             continue
+        try:
+            if not urlsplit(link).hostname:
+                continue
+            url = canonical_url(link)
+        except ValueError:
+            continue
         raw_summary = _entry_summary(entry)
         articles.append(
             Article(
-                url=canonical_url(link),
+                url=url,
                 title=title,
                 published=to_utc_naive(_parse_date(entry)),
                 source_name=source.name,

@@ -14,14 +14,13 @@
   <div class="wrap header-row">
     <div>
       <h1>OpsRisk Radar</h1>
-      <p class="tagline">Supply chain disruption signals from public news, scored and explained</p>
+      <p class="tagline">Supply chain risk intelligence</p>
     </div>
     <nav aria-label="Sections">
-      <a href="#briefing">Briefing</a>
+      <a href="#alerts">Overview</a>
       <a href="#events">Events</a>
-      <a href="#history">History</a>
-      <a href="#status">Pipeline</a>
-      <a href="#method">Method</a>
+      <a href="#history">Trends &amp; reports</a>
+      <a href="#status">Data health</a>
     </nav>
   </div>
 </header>
@@ -31,16 +30,30 @@
 </div>
 
 <main id="main" class="wrap">
+  <div class="page-intro">
+    <div><p class="eyebrow">THE BRIEFING</p><h2>Supply chain risk, in context.</h2>
+      <p>Recent disruptions, their sources and the evidence behind each assessment.</p></div>
+    <div class="intro-status"><span class="status-dot" aria-hidden="true"></span><span id="hero-status">Loading data status…</span></div>
+  </div>
+  <section id="alerts" aria-labelledby="alerts-h">
+    <div class="section-heading"><div><p class="eyebrow risk-eyebrow">LATEST SIGNALS</p><h2 id="alerts-h">Priority watch</h2></div><span class="window-label">LAST 24 HOURS</span></div>
+    <p class="muted">High-priority stories first seen before the last build. Updates follow the pipeline schedule; verify sources before acting.</p>
+    <ol class="brief-list" id="alert-list"></ol>
+    <p class="muted" id="alert-empty" hidden>No high-priority signals in this build window.</p>
+  </section>
+
   <section id="briefing" aria-labelledby="briefing-h">
-    <h2 id="briefing-h">Current briefing</h2>
+    <div class="section-heading"><div><p class="eyebrow">AT A GLANCE</p><h2 id="briefing-h">The last seven days</h2></div><span class="window-label">ROLLING 7 DAYS</span></div>
     <p class="muted" id="briefing-meta"></p>
+    <p class="muted" id="analysis-meta"></p>
     <div class="kpis" id="kpis"></div>
-    <ol class="brief-list" id="brief-list"></ol>
-    <p class="muted" id="brief-empty" hidden>No article in the last 7 days reached HIGH severity.</p>
+    <details class="top-stories"><summary>See highest-scored stories</summary><ol class="brief-list" id="brief-list"></ol>
+    <p class="muted" id="brief-empty" hidden>No article in the last 7 days reached HIGH severity.</p></details>
   </section>
 
   <section id="events" aria-labelledby="events-h">
-    <h2 id="events-h">Ranked events</h2>
+    <p class="eyebrow">THE NEWS</p><h2 id="events-h">All events</h2>
+    <p class="muted">Filter the stories and open an explanation to see the evidence behind each score.</p>
     <form class="filters" id="filters" onsubmit="return false">
       <label>Search <input type="search" id="f-q" placeholder="title, summary, source"></label>
       <label>Severity
@@ -60,7 +73,10 @@
   </section>
 
   <section id="history" aria-labelledby="history-h">
-    <h2 id="history-h">History</h2>
+    <p class="eyebrow">THE RECORD</p><h2 id="history-h">Trends &amp; reports</h2>
+    <h3>Daily high-priority trend</h3>
+    <p class="muted">Days with recorded stories, most recent first. Counts are based on automated scores.</p>
+    <ol class="trend" id="trend-chart" aria-label="Daily high-priority story counts"></ol>
     <div class="cols">
       <div>
         <h3>Daily</h3>
@@ -74,6 +90,9 @@
         <h3>Weekly</h3>
         <label>Week <select id="f-week"></select></label>
         <div id="week-view"></div>
+        <h3>Monthly</h3>
+        <label>Month <select id="f-month"></select></label>
+        <div id="month-view"></div>
       </div>
     </div>
   </section>

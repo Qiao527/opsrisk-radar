@@ -119,7 +119,7 @@ def load_labels(path: Path = LABELS_CSV) -> tuple[list[LabeledArticle], int]:
             unlabeled += 1
             continue
         label = _parse_label(raw, row.get("id", "?"))
-        if "labeler" in row and not row["labeler"]:
+        if not row.get("labeler"):
             raise LabelError(f"row id={row.get('id')}: labeled rows must name the labeler")
         labeled.append(_article(row, label))
     return labeled, unlabeled

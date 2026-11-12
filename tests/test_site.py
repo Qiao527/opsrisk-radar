@@ -79,6 +79,26 @@ def test_rebuild_removes_stale_history_files(db, tmp_path):
     assert not (out / "data" / "history" / "1999-01-01.json").exists()
 
 
+def test_monthly_summary_uses_calendar_month_and_excludes_future(db, tmp_path):
+    _populate(db, fetched_at="2026-10-01T00:00:00")
+    aid, _ = db.upsert_article("https://e.com/old", "Plant shutdown", None, "Wire E",
+                               "logistics", "", "")
+    a = assess("Plant shutdown", "")
+    db.save_score(aid, 1, 1, 1, 1, 1, a.score, scorer="rules-v2.1", detail=a.as_detail())
+    db.conn.execute("UPDATE articles SET fetched_at = '2026-09-30T23:59:59' WHERE id = ?", (aid,))
+    future, _ = db.upsert_article("https://f.com/future", "Future strike", None, "Wire F",
+                                  "logistics", "", "")
+    db.save_score(future, 1, 1, 1, 1, 1, a.score, scorer="rules-v2.1", detail=a.as_detail())
+    db.conn.execute("UPDATE articles SET fetched_at = '2026-10-27T00:00:00' WHERE id = ?", (future,))
+    out = tmp_path / "site"
+    build_site(db, out, now=NOW)
+    assert _load(out, "monthly/2026-10.json")["total"] == 3
+    assert _load(out, "monthly/2026-09.json")["total"] == 1
+    assert [m["month"] for m in _load(out, "history/index.json")["months"]] == ["2026-10", "2026-09"]
+    (out / "data/monthly/2026-09.json").unlink()
+    assert any("missing month" in error for error in check_site(out))
+
+
 def test_check_site_catches_inconsistent_data(db, tmp_path):
     _populate(db)
     out = tmp_path / "s"

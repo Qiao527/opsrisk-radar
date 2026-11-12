@@ -1,8 +1,9 @@
 """LLM-based contextual risk assessment with validation, caching and cost tracking.
 
 The model receives the labeling guide's definitions and one article, and must
-answer with JSON matching ``ASSESSMENT_SCHEMA`` (enforced by structured
-outputs). The answer is then checked semantically:
+answer with JSON matching ``ASSESSMENT_SCHEMA``. Anthropic uses structured
+outputs; DeepSeek uses JSON mode and the same local validation. The answer
+is then checked semantically:
 
 * the severity is moved into the band that matches the stated level;
 * every evidence quote must appear verbatim in the article; unsupported
@@ -24,12 +25,16 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import math
 import os
 import sqlite3
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Protocol
+
+import httpx
 
 log = logging.getLogger(__name__)
 
@@ -145,12 +150,14 @@ class Usage:
     output_tokens: int = 0
     cache_read_tokens: int = 0
     cost_usd: float = 0.0
+    unpriced_calls: int = 0
     latency_s: float = 0.0
 
     def summary(self) -> str:
+        cost = f"~${self.cost_usd:.4f}" if not self.unpriced_calls else "not estimated"
         return (f"{self.calls} call(s), {self.cache_hits} cache hit(s), "
                 f"{self.failures} failure(s), {self.input_tokens} in / "
-                f"{self.output_tokens} out tokens, ~${self.cost_usd:.4f}, "
+                f"{self.output_tokens} out tokens, {cost}, "
                 f"{self.latency_s:.1f}s API time")
 
 
@@ -177,8 +184,12 @@ def validate(raw: dict[str, Any], title: str, summary: str) -> Assessment:
         rationale = str(raw["rationale"])[:400]
     except (KeyError, TypeError, ValueError) as exc:
         raise LLMError(f"malformed assessment: {exc}") from exc
+    if not math.isfinite(severity) or not isinstance(raw["evidence"], list):
+        raise LLMError("malformed assessment: invalid severity or evidence")
     if level not in LEVEL_BANDS:
         raise LLMError(f"unknown level {level!r}")
+    if status not in ASSESSMENT_SCHEMA["properties"]["status"]["enum"]:
+        raise LLMError(f"unknown status {status!r}")
 
     flags: list[str] = []
     text = _norm(f"{title} {summary}")
@@ -254,6 +265,39 @@ def _default_client() -> MessagesClient:
         raise LLMUnavailable(f"Anthropic client unavailable: {type(exc).__name__}") from exc
 
 
+class DeepSeekMessages:
+    """Adapt DeepSeek JSON output to the existing validation and fallback path."""
+
+    def create(self, **kwargs: Any) -> Any:
+        key = os.environ.get("DEEPSEEK_API_KEY")
+        if not key:
+            raise LLMUnavailable("no DeepSeek credentials configured")
+        payload = {
+            "model": kwargs["model"], "max_tokens": 1024,
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {"role": "system", "content": kwargs["system"] +
+                 "\nReturn a JSON object with this schema: " + json.dumps(ASSESSMENT_SCHEMA)},
+                kwargs["messages"][0],
+            ],
+        }
+        try:
+            response = httpx.post("https://api.deepseek.com/chat/completions", json=payload,
+                                  headers={"Authorization": f"Bearer {key}"}, timeout=60.0)
+            response.raise_for_status()
+            data = response.json()
+            choice = data["choices"][0]
+            usage = data.get("usage") or {}
+            return SimpleNamespace(
+                stop_reason="end_turn" if choice["finish_reason"] == "stop" else "refusal",
+                content=[SimpleNamespace(type="text", text=choice["message"].get("content") or "")],
+                usage=SimpleNamespace(input_tokens=usage.get("prompt_tokens", 0),
+                                      output_tokens=usage.get("completion_tokens", 0)),
+            )
+        except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
+            raise LLMError(f"DeepSeek request failed: {type(exc).__name__}") from exc
+
+
 class LLMScorer:
     def __init__(self, model: str = DEFAULT_MODEL, cache: LLMCache | None = None,
                  client: MessagesClient | None = None, max_calls: int | None = None,
@@ -283,6 +327,8 @@ class LLMScorer:
 
         raw, in_tok, out_tok, cache_tok, latency = self._call(title, summary)
         cost = estimate_cost(self.model, in_tok, out_tok, cache_tok)
+        if self.model not in PRICING:
+            self.usage.unpriced_calls += 1
         self.usage.input_tokens += in_tok
         self.usage.output_tokens += out_tok
         self.usage.cache_read_tokens += cache_tok

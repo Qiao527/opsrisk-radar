@@ -79,6 +79,7 @@ error analysis, so this number is in-sample.
    --final`); report it alongside the two provisional runs.
 3. Run llm-v1 and hybrid-v1 with an API key on the same split, recording
    measured tokens, cost and latency.
-4. Draw a new batch from articles first seen after the rules were frozen
-   (`scripts/sample_for_labeling.py`) as a clean, never-seen test batch; the
-   current test split was read during labeling.
+4. Draw a new batch from articles first seen after the final scorer change
+   (`scripts/sample_for_labeling.py`). Review it for near-duplicates and prior
+   exposure before using it as a fresh test batch; the current test split was
+   read during labeling.

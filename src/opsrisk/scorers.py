@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Sequence
 
 from opsrisk.config import AppConfig
@@ -15,11 +16,22 @@ class UnknownScorer(ValueError):
 
 
 def _llm(cfg: AppConfig):
-    from opsrisk.llm_scorer import LLMCache, LLMScorer, LLMUnavailable, credentials_configured
+    from opsrisk.llm_scorer import (
+        DeepSeekMessages,
+        LLMCache,
+        LLMScorer,
+        LLMUnavailable,
+        credentials_configured,
+    )
 
-    if not credentials_configured():
+    if cfg.llm.provider == "deepseek" and not os.environ.get("DEEPSEEK_API_KEY"):
+        raise LLMUnavailable("no DeepSeek credentials (set DEEPSEEK_API_KEY)")
+    if cfg.llm.provider == "anthropic" and not credentials_configured():
         raise LLMUnavailable("no Anthropic credentials (set ANTHROPIC_API_KEY)")
+    if cfg.llm.provider not in {"anthropic", "deepseek"}:
+        raise LLMUnavailable(f"unknown LLM provider {cfg.llm.provider!r}")
     return LLMScorer(model=cfg.llm.model, cache=LLMCache(LLM_CACHE),
+                     client=DeepSeekMessages() if cfg.llm.provider == "deepseek" else None,
                      max_calls=cfg.llm.max_calls_per_run)
 
 

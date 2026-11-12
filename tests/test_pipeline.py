@@ -117,6 +117,15 @@ def test_run_fails_loudly_when_most_feeds_fail(project_dir, monkeypatch, capsys)
         db.close()
 
 
+def test_run_fails_when_no_feeds_are_enabled(project_dir, monkeypatch, capsys):
+    async def no_feeds(_sources):
+        return []
+
+    monkeypatch.setattr(pipeline, "fetch_sources", no_feeds)
+    assert cli.main(["--db", "data/test.db", "run"]) == 2
+    assert "no enabled feeds" in capsys.readouterr().err
+
+
 def test_rule_set_version_change_triggers_rescoring(project_dir, offline_feeds, monkeypatch,
                                                     capsys):
     import opsrisk.risk_rules as rr

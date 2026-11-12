@@ -64,10 +64,11 @@ def test_evaluate_reports_precision_recall_and_misses():
 
 def _write_labels(path, labels):
     with path.open("w", newline="", encoding="utf-8-sig") as f:
-        w = csv.DictWriter(f, fieldnames=["id", "source", "title", "summary", "label"])
+        w = csv.DictWriter(f, fieldnames=["id", "source", "title", "summary", "label", "labeler"])
         w.writeheader()
         for i, (title, label) in enumerate(labels, 1):
-            w.writerow({"id": i, "source": "s", "title": title, "summary": "", "label": label})
+            w.writerow({"id": i, "source": "s", "title": title, "summary": "", "label": label,
+                        "labeler": "QA" if label else ""})
 
 
 def test_load_labels_skips_blank_rows(tmp_path):
@@ -149,6 +150,13 @@ def test_labeled_row_without_labeler_is_rejected(project_dir, capsys):
                     encoding="utf-8-sig")
     assert cli.main(["--db", "data/t.db", "evaluate"]) == 1
     assert "must name the labeler" in capsys.readouterr().out
+
+
+def test_labeled_file_without_labeler_column_is_rejected(tmp_path):
+    path = tmp_path / "labels.csv"
+    path.write_text("id,title,label\n1,Port strike,2\n", encoding="utf-8")
+    with pytest.raises(LabelError, match="must name the labeler"):
+        load_labels(path)
 
 
 def test_provisional_reports_carry_a_warning(project_dir, capsys):

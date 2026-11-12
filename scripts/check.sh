@@ -22,7 +22,7 @@ python -m opsrisk validate
 echo ""
 
 echo "--- Step 2: Checking brief file ---"
-TODAY=$(date +%Y-%m-%d)
+TODAY=$(date -u +%Y-%m-%d)
 BRIEF="briefs/${TODAY}.md"
 
 if [ -f "$BRIEF" ]; then

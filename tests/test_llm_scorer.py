@@ -101,7 +101,8 @@ def test_severity_is_moved_into_the_level_band():
 
 @pytest.mark.parametrize(
     "bad",
-    [{"level": "act"}, _answer(level="urgent"), _answer(severity="high")],
+    [{"level": "act"}, _answer(level="urgent"), _answer(severity="high"),
+     _answer(severity=float("nan")), _answer(evidence="not a list"), _answer(status="unknown")],
 )
 def test_malformed_answers_raise(bad):
     with pytest.raises(LLMError):
@@ -204,5 +205,107 @@ def test_pipeline_hybrid_without_credentials_falls_back_and_records_rules(
         assert row["scorer"] == "rules-v2.1"
         assert row["composite_score"] >= 7.0
         assert "fallback" in json.loads(row["detail"])["llm"]
+    finally:
+        db.close()
+
+
+def test_hybrid_results_and_fallback_are_distinguishable_on_site(project_dir, monkeypatch):
+    from opsrisk import llm_scorer
+    from opsrisk.config import load_config
+    from opsrisk.database import Database
+    from opsrisk.pipeline import score
+    from opsrisk.site import build_site
+
+    client = FakeMessages(_answer(), ConnectionError("offline"))
+    monkeypatch.setattr(llm_scorer, "_default_client", lambda: client)
+    cfg = load_config()
+    cfg.scoring.scorer = "hybrid-v1"
+    cfg.data_dir = project_dir / "data"
+    db = Database(project_dir / "data" / "h.db")
+    try:
+        run = db.start_run("run", "test", None, None, "hybrid-v1")
+        db.upsert_article("https://e.com/1", TITLE, None, "Wire", "logistics", SUMMARY, "")
+        db.upsert_article("https://e.com/2", "Typhoon closes Taiwan ports", None,
+                          "Wire", "logistics", "", "")
+        assert score(db, cfg) == 2
+        db.finish_run(run, "ok", {"new": 2})
+        out = project_dir / "site"
+        build_site(db, out)
+        articles = json.loads((out / "data/latest.json").read_text())["articles"]
+        by_url = {a["url"]: a for a in articles}
+        ai = by_url["https://e.com/1"]
+        fallback = by_url["https://e.com/2"]
+        assert ai["analysis_origin"] == "ai"
+        assert ai["evidence"] == _answer()["evidence"]
+        assert ai["reason"] == _answer()["rationale"]
+        assert fallback["analysis_origin"] == "fallback"
+        assert "fallback" in fallback["method"]
+    finally:
+        db.close()
+
+
+def test_deepseek_adapter_sends_json_and_validates_response(monkeypatch):
+    import httpx
+
+    from opsrisk.llm_scorer import DeepSeekMessages
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    seen = {}
+    answer_json = json.dumps(_answer())
+
+    def fake_post(url, *, json, headers, timeout):
+        seen.update(url=url, payload=json, headers=headers, timeout=timeout)
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {
+            "content": answer_json}}],
+            "usage": {"prompt_tokens": 20, "completion_tokens": 10}},
+            request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    scorer = LLMScorer(model="deepseek-flash", client=DeepSeekMessages())
+    result = scorer.assess(TITLE, SUMMARY)
+    assert result.level == "act" and result.evidence == _answer()["evidence"]
+    assert seen["payload"]["response_format"] == {"type": "json_object"}
+    assert seen["payload"]["messages"][1]["content"].startswith("Title:")
+    assert scorer.usage.input_tokens == 20 and "not estimated" in scorer.usage.summary()
+
+
+def test_deepseek_without_credentials_falls_back(monkeypatch):
+    from opsrisk.llm_scorer import DeepSeekMessages
+
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    result = HybridScorer(LLMScorer(model="deepseek-flash", client=DeepSeekMessages())).score(
+        TITLE, SUMMARY)
+    assert not result.used_llm and result.detail["llm"].startswith("fallback")
+
+
+def test_deepseek_pipeline_exports_ai_evidence(project_dir, monkeypatch):
+    import httpx
+
+    from opsrisk.config import load_config
+    from opsrisk.database import Database
+    from opsrisk.pipeline import score
+    from opsrisk.site import build_site
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    response = {"choices": [{"finish_reason": "stop", "message": {
+        "content": json.dumps(_answer())}}], "usage": {"prompt_tokens": 20, "completion_tokens": 10}}
+    monkeypatch.setattr(httpx, "post", lambda url, **kw: httpx.Response(
+        200, json=response, request=httpx.Request("POST", url)))
+    cfg = load_config()
+    cfg.scoring.scorer = "hybrid-v1"
+    cfg.llm.provider, cfg.llm.model = "deepseek", "deepseek-flash"
+    cfg.data_dir = project_dir / "data"
+    db = Database(project_dir / "data" / "test.db")
+    try:
+        run = db.start_run("run", "test", None, None, "hybrid-v1")
+        db.upsert_article("https://e.com/1", TITLE, None, "Wire", "logistics", SUMMARY, "")
+        assert score(db, cfg) == 1
+        db.finish_run(run, "ok", {"new": 1})
+        out = project_dir / "site"
+        build_site(db, out)
+        (article,) = json.loads((out / "data/latest.json").read_text())["articles"]
+        assert article["analysis_origin"] == "ai"
+        assert article["evidence"] == _answer()["evidence"]
+        assert "deepseek-flash" in article["method"]
     finally:
         db.close()

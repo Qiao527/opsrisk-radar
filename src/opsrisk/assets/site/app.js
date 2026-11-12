@@ -62,11 +62,18 @@ function showBanner(meta, status) {
     warn = true;
     msgs.push(`This page shows ${meta.data_label} data, not live monitoring output.`);
   }
-  const genAgeH = (Date.now() - new Date(meta.generated_at).getTime()) / 3.6e6;
-  if (meta.stale || genAgeH > meta.stale_after_hours) {
+  if (status?.last_run?.status === "partial") {
     warn = true;
-    const age = status && status.hours_since_success != null
-      ? `${Math.round(Math.max(status.hours_since_success, genAgeH))} hours`
+    const succeeded = status.feeds.filter((f) => f.status === "ok").length;
+    msgs.push(`Some feeds failed in the last published run (${succeeded}/${status.feeds.length} succeeded). Coverage may be incomplete; see Pipeline status.`);
+  }
+  const genAgeH = (Date.now() - new Date(meta.generated_at).getTime()) / 3.6e6;
+  const successAgeH = status && status.hours_since_success != null
+    ? status.hours_since_success + genAgeH : null;
+  if (meta.stale || successAgeH === null || successAgeH > meta.stale_after_hours) {
+    warn = true;
+    const age = successAgeH !== null
+      ? `${Math.round(Math.max(0, successAgeH))} hours`
       : "an unknown time";
     msgs.push(`Data is stale: the last successful pipeline run was ${age} ago. Treat these events as historical.`);
   }
@@ -76,6 +83,9 @@ function showBanner(meta, status) {
   banner.textContent = msgs.join(" ");
   banner.className = warn ? "banner" : "banner info";
   banner.hidden = false;
+  const hero = document.getElementById("hero-status");
+  if (hero) hero.textContent = meta.data_label !== "live" ? "SAMPLE DATA" :
+    warn ? "DATA STATUS NEEDS REVIEW" : "DATA CURRENT";
 }
 
 // -------------------------------------------------------------- briefing
@@ -85,13 +95,17 @@ function renderBriefing(articles, meta) {
   for (const a of articles) counts[a.severity === "CRITICAL" ? "HIGH" : a.severity]++;
   const kpis = document.getElementById("kpis");
   kpis.replaceChildren(
-    el("div", { class: "kpi" }, el("b", {}, counts.HIGH), el("span", {}, "High or critical")),
-    el("div", { class: "kpi" }, el("b", {}, counts.MEDIUM), el("span", {}, "Medium")),
-    el("div", { class: "kpi" }, el("b", {}, counts.LOW), el("span", {}, "Low")),
-    el("div", { class: "kpi" }, el("b", {}, articles.length), el("span", {}, "Distinct stories, 7 days")),
+    el("div", { class: "kpi kpi-high" }, el("span", {}, "HIGH OR CRITICAL"), el("b", {}, counts.HIGH), el("small", {}, "Need a closer look")),
+    el("div", { class: "kpi kpi-medium" }, el("span", {}, "MEDIUM"), el("b", {}, counts.MEDIUM), el("small", {}, "Worth monitoring")),
+    el("div", { class: "kpi kpi-low" }, el("span", {}, "LOW"), el("b", {}, counts.LOW), el("small", {}, "Background signals")),
+    el("div", { class: "kpi kpi-total" }, el("span", {}, "STORIES ANALYZED"), el("b", {}, articles.length), el("small", {}, "Distinct · last 7 days")),
   );
   document.getElementById("briefing-meta").textContent =
     `Stories first seen in the 7 days to ${fmtTime(meta.generated_at)}. Scorer: ${meta.scorer || "n/a"}.`;
+  const ai = articles.filter((a) => a.analysis_origin === "ai").length;
+  const fallback = articles.filter((a) => a.analysis_origin === "fallback").length;
+  document.getElementById("analysis-meta").textContent =
+    `${ai} AI-reviewed, ${fallback} AI fallbacks, ${articles.length - ai - fallback} rule-scored. AI and rule scores are unverified.`;
   const top = articles.filter((a) => SEV_RANK[a.severity] >= 2).slice(0, 5);
   const list = document.getElementById("brief-list");
   list.replaceChildren(...top.map((a) => {
@@ -105,11 +119,33 @@ function renderBriefing(articles, meta) {
   document.getElementById("brief-empty").hidden = top.length > 0;
 }
 
+function renderAlerts(articles, meta) {
+  const buildTime = new Date(meta.generated_at).getTime();
+  const recent = articles.filter((a) => {
+    const seen = new Date(a.first_seen.endsWith("Z") ? a.first_seen : a.first_seen + "Z").getTime();
+    return SEV_RANK[a.severity] >= 2 && seen <= buildTime && seen >= buildTime - 86400000;
+  });
+  document.getElementById("alert-list").replaceChildren(...recent.slice(0, 5).map((a) => {
+    const href = safeUrl(a.url);
+    const method = a.analysis_origin === "ai" ? "AI-reviewed" :
+      a.analysis_origin === "fallback" ? "Rules · AI fallback" : "Rule-scored";
+    return el("li", { class: "priority-card" },
+      el("div", { class: "priority-top" }, sevBadge(a.severity), el("span", { class: "priority-method" }, method)),
+      href ? el("a", { class: "priority-title", href, rel: "noopener noreferrer", target: "_blank" }, a.title) :
+        el("span", { class: "priority-title" }, a.title),
+      el("p", { class: "priority-reason" }, a.reason || "Open the event for details."),
+      el("div", { class: "priority-source" }, `${a.source} · First seen ${fmtTime(a.first_seen)}`));
+  }));
+  document.getElementById("alert-empty").hidden = recent.length > 0;
+}
+
 // ---------------------------------------------------------------- events
 
 function eventItem(a) {
   const href = safeUrl(a.url);
   const meta = [a.source, `published ${fmtDate(a.published)}`, `first seen ${fmtDate(a.first_seen)}`];
+  meta.push(a.analysis_origin === "ai" ? "AI-reviewed" :
+    a.analysis_origin === "fallback" ? "AI review fell back to rules" : "Rule-scored");
   if (a.also_reported_by.length) meta.push(`also: ${a.also_reported_by.join(", ")}`);
   const evidence = a.evidence.length
     ? el("dd", {}, ...a.evidence.flatMap((q, i) => [i ? " · " : "", el("span", { class: "quote" }, q)]))
@@ -190,6 +226,15 @@ async function selectDay(day) {
 // --------------------------------------------------------------- history
 
 function renderHistory(index) {
+  const recentDays = index.days.slice(0, 14);
+  const maxHigh = Math.max(1, ...recentDays.map((d) => d.severity.CRITICAL + d.severity.HIGH));
+  document.getElementById("trend-chart").replaceChildren(...recentDays.map((d) => {
+    const high = d.severity.CRITICAL + d.severity.HIGH;
+    return el("li", {}, el("span", {}, d.date),
+      el("span", { class: "trend-track", "aria-hidden": "true" },
+        el("span", { class: "trend-bar", style: `width:${100 * high / maxHigh}%` })),
+      el("strong", {}, `${high} high or critical`));
+  }));
   const tbody = document.querySelector("#day-table tbody");
   tbody.replaceChildren(...index.days.map((d) => el("tr", {},
     el("td", {}, d.date),
@@ -201,17 +246,23 @@ function renderHistory(index) {
   fillSelect("f-day", index.days.map((d) => d.date), (v) => `Day ${v}`);
   const weekSel = document.getElementById("f-week");
   weekSel.replaceChildren(...index.weeks.map((w) => el("option", { value: w.week }, `${w.week} (${w.start} – ${w.end})`)));
-  weekSel.onchange = () => renderWeek(weekSel.value);
-  if (index.weeks.length) renderWeek(index.weeks[0].week);
+  weekSel.onchange = () => renderPeriod("weekly", weekSel.value, "week-view");
+  if (index.weeks.length) renderPeriod("weekly", index.weeks[0].week, "week-view");
   else document.getElementById("week-view").textContent = "No weekly data yet.";
+  const monthSel = document.getElementById("f-month");
+  const months = index.months || [];
+  monthSel.replaceChildren(...months.map((m) => el("option", { value: m.month }, `${m.month} (${m.total} stories)`)));
+  monthSel.onchange = () => renderPeriod("monthly", monthSel.value, "month-view");
+  if (months.length) renderPeriod("monthly", months[0].month, "month-view");
+  else document.getElementById("month-view").textContent = "No monthly data yet.";
 }
 
-async function renderWeek(week) {
-  const view = document.getElementById("week-view");
+async function renderPeriod(period, id, viewId) {
+  const view = document.getElementById(viewId);
   try {
-    const w = await getJSON(`data/weekly/${week}.json`);
+    const w = await getJSON(`data/${period}/${id}.json`);
     view.replaceChildren(
-      el("p", {}, `${w.total} stories from ${w.source_count} sources: ${w.severity.high} high+, ${w.severity.medium} medium, ${w.severity.low} low.`),
+      el("p", {}, `Stories first seen ${w.start} to ${w.end} UTC: ${w.total} from ${w.source_count} sources; ${w.severity.high} high+, ${w.severity.medium} medium, ${w.severity.low} low.`),
       el("h4", {}, "Highest-scored"),
       el("ol", {}, ...w.top.map((a) => el("li", {}, sevBadge(a.severity), " ", a.title))),
       el("h4", {}, "Headline themes"),
@@ -220,7 +271,7 @@ async function renderWeek(week) {
         : el("p", { class: "muted" }, "No themed headlines."),
     );
   } catch (err) {
-    view.textContent = `Could not load week ${week}: ${err.message}`;
+    view.textContent = `Could not load ${period} summary ${id}: ${err.message}`;
   }
 }
 
@@ -270,6 +321,7 @@ async function main() {
     state.latest = latest.articles;
     showBanner(latest.meta, status);
     renderBriefing(latest.articles, latest.meta);
+    renderAlerts(latest.articles, latest.meta);
     renderHistory(index);
     renderStatus(status);
     await selectDay("");
@@ -286,6 +338,12 @@ async function main() {
     document.getElementById(id).addEventListener("input", applyFilters);
   }
   document.getElementById("f-day").addEventListener("change", (e) => selectDay(e.target.value));
+  setInterval(async () => {
+    try {
+      const next = await getJSON("data/latest.json");
+      if (next.meta.generated_at !== state.meta.generated_at) window.location.reload();
+    } catch { /* Keep the last published view if the network is unavailable. */ }
+  }, 60000);
 }
 
 main();

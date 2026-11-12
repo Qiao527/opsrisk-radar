@@ -154,6 +154,15 @@ def test_html_error_page_is_reported_as_empty_or_malformed():
     assert not results[0].ok
 
 
+def test_bad_entry_url_does_not_discard_valid_entries():
+    xml = """<rss version="2.0"><channel><title>News</title>
+      <item><title>Bad</title><link>https://example.com:bad/path</link></item>
+      <item><title>Good</title><link>https://example.com/good</link></item>
+    </channel></rss>"""
+    results, _ = _results(lambda request: httpx.Response(200, text=xml))
+    assert [a.url for a in results[0].articles] == ["https://example.com/good"]
+
+
 def test_requests_identify_the_client():
     seen = {}
 
