@@ -22,8 +22,8 @@ Two workflows:
 5. **Save the database** back to the release, keeping the previous copy as
    `opsrisk.prev.db.gz`.
 6. **Deploy** the site with `actions/deploy-pages`.
-7. **On any failure**, open (or comment on) a "Scheduled pipeline failing"
-   issue.
+7. **On a scheduled-run failure**, open (or comment on) a "Scheduled pipeline
+   failing" issue. Manual failures are visible in Actions without opening an issue.
 
 The database is stored as a release asset rather than committed, so the git
 history does not grow by a binary file every day, and rather than in the
@@ -50,7 +50,8 @@ failure report.
 1. Settings → Pages → Source: **GitHub Actions**.
 2. Actions → Pipeline → Run workflow, with `allow_fresh_db` checked.
 3. Optional email digest: secrets `RESEND_API_KEY`, `REPORT_EMAIL_TO`,
-   `REPORT_EMAIL_FROM`.
+   `REPORT_EMAIL_FROM`. Scheduled runs send the digest when configured; manual
+   runs send it only when `send_email` is explicitly checked.
 4. Optional hybrid scoring requires installing `.[llm]`, setting secret
    `ANTHROPIC_API_KEY` as an environment variable for the "Fetch and score"
    step, and setting `[scoring] scorer = "hybrid-v1"`. The workflow currently

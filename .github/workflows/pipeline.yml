@@ -17,6 +17,10 @@ on:
         description: "Start a new database if no saved one exists (first run only)"
         type: boolean
         default: false
+      send_email:
+        description: "Send the optional email digest for this manual run"
+        type: boolean
+        default: false
 
 concurrency:
   group: pipeline
@@ -103,7 +107,7 @@ jobs:
         run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/pipeline.yml/enable"
 
       - name: Email digest (optional)
-        if: env.EMAIL_CONFIGURED == 'true'
+        if: env.EMAIL_CONFIGURED == 'true' && (github.event_name == 'schedule' || inputs.send_email == true)
         continue-on-error: true
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
@@ -129,7 +133,7 @@ jobs:
 
   report-failure:
     needs: [run, deploy]
-    if: failure()
+    if: failure() && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     permissions:
       issues: write
