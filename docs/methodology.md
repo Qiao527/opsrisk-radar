@@ -1,14 +1,14 @@
 # Scoring methodology
 
 Three scorers are implemented and compared under one evaluation protocol
-([evaluation.md](evaluation.md)). The pipeline default is **rules-v2.1**.
+([evaluation.md](evaluation.md)). The pipeline default is **rules-v2.2**.
 
 | Scorer | What it is | Status |
 |--------|-----------|--------|
 | `rules-v1` | Weighted average of five keyword dimensions | Legacy; kept for comparison and as supporting signals |
-| `rules-v2.1` | Event / status / article-type classification | **Default.** Evaluated on provisional labels |
+| `rules-v2.2` | Event / status / article-type classification | **Default.** Adds a postponed strike-deadline rule; not yet evaluated on human labels |
 | `llm-v1` | Claude assessment against the labeling guide, validated | Implemented and mock-tested; **not yet run live** |
-| `hybrid-v1` | rules-v2.1 triage, LLM review of non-noise articles | Implemented and mock-tested; **not yet run live** |
+| `hybrid-v1` | Current rules triage, LLM review of non-noise articles | Implemented and mock-tested; **not yet run live** |
 
 ## Why rules-v1 was replaced
 
@@ -23,7 +23,12 @@ Champi closes Taiwan ports" scored 3.25, and "Australian asset manager
 because "strike" matched. Lowering thresholds would not fix the ordering; the
 model was measuring keyword density, not events.
 
-## rules-v2.1
+## rules-v2.2
+
+Version 2.2 recognizes a pushed or postponed strike deadline as speculative
+rather than an ongoing strike. The reported evaluation below and in
+[evaluation.md](evaluation.md) concerns v2.1; v2.2 has not been evaluated on
+human labels.
 
 Implemented in `src/opsrisk/risk_rules.py`, derived from the operational
 definitions in [labeling_guide.md](labeling_guide.md):
@@ -59,7 +64,7 @@ A tie-breaker of 0.01 per evidence phrase (at most 0.09) orders articles inside
 a class without crossing a band. Every score stores its categories, status,
 matched evidence and a one-line reason, which the dashboard shows.
 
-The rule-set id is stored with each score (`rules-v2.1`); changing any rule
+The rule-set id is stored with each score (`rules-v2.2`); changing any rule
 requires bumping it, which rescores the database on the next run.
 
 ### Known failure modes (observed)
@@ -106,7 +111,7 @@ the hybrid.
 
 ## hybrid-v1
 
-`src/opsrisk/hybrid.py`. rules-v2.1 scores every article. Articles the rules
+`src/opsrisk/hybrid.py`. The current rules score every article. Articles the rules
 place at watch or act level, or that match any event pattern, go to the LLM;
 the LLM's validated severity replaces the rule score. Clear noise is never
 sent. Any LLM failure keeps the rule score and records the fallback.
@@ -134,10 +139,10 @@ token counts and cost once it runs with a key; `opsrisk evaluate` prints them.
 
 ## Choosing the default
 
-rules-v2.1 is the default because it is free, instant, deterministic,
-explainable, and on the evidence available so far (provisional labels) far
-better than v1. The hybrid should become the default only if, on **human**
-labels, it beats rules-v2.1 on the test split by more than the bootstrap
+Rules are the default because they are free, instant, deterministic and
+explainable. The earlier v2.1 outperformed v1 on provisional labels; that is
+not proof of accuracy. The hybrid should become the default only if, on **human**
+labels, it beats the current rules on a fresh test split by more than the bootstrap
 interval width, at an acceptable measured cost. Until then it remains an
 opt-in (`[scoring] scorer = "hybrid-v1"`).
 

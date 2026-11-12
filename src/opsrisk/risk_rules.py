@@ -31,7 +31,7 @@ from opsrisk.signals import CATEGORY_LABELS, is_market_report
 
 # Version of the rule set stored with every score; bump it on any rule change
 # so stored scores are recomputed. "rules-v2" in config selects this module.
-SCORER_ID = "rules-v2.1"
+SCORER_ID = "rules-v2.2"
 
 _FACILITY = (
     r"(ports?|harbou?rs?|terminals?|plants?|factor(?:y|ies)|mills?|airports?|borders?|"
@@ -119,7 +119,8 @@ SPECULATIVE = re.compile(
     r"\b(could|may|might|warns?|risks?|threat\w*|fears?|outlook|forecast\w*|"
     r"expected\s+to|plans?\s+to|propos\w+|consider\w*|weighs?|vote|talks|"
     r"negotiat\w*|on\s+hold|urg(e|es|ed)|seen\s+as|delays?\s+(\w+\s+){0,3}(fees?|"
-    r"implementation|rules?|tariffs?)|suspension|extend\w*)\b",
+    r"implementation|rules?|tariffs?)|suspension|extend\w*|"
+    r"(strike|walkout|lockout)\s+deadline\b.{0,50}\b(pushed|postponed|delayed|extended))\b",
     re.IGNORECASE,
 )
 

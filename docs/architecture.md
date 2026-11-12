@@ -14,7 +14,7 @@ flowchart LR
         N --> DB[(SQLite<br/>articles · scores<br/>runs · feed_fetches)]
     end
     subgraph Scoring
-        DB --> R2[risk_rules.py<br/>rules-v2.1]
+        DB --> R2[risk_rules.py<br/>rules-v2.2]
         DB --> H[hybrid.py]
         H --> R2
         H --> L[llm_scorer.py<br/>validated, cached]
@@ -45,7 +45,7 @@ flowchart LR
 | Storage | `database.py` | Versioned migrations, transactional batch ingest, deduplication, run provenance, report queries |
 | Orchestration | `pipeline.py` | `fetch` and `score` steps, failure threshold, git SHA and config hash |
 | Scoring | `scorer.py` | rules-v1 keyword dimensions (kept as supporting signals and for comparison) |
-| | `risk_rules.py` | rules-v2.1: event, status and article-type classification with evidence |
+| | `risk_rules.py` | rules-v2.2: event, status and article-type classification with evidence |
 | | `llm_scorer.py`, `hybrid.py` | LLM assessment and the cost-aware hybrid |
 | Shared rules | `signals.py` | Severity bands, category labels, themes, market-forecast patterns |
 | Evaluation | `evaluate.py`, `metrics.py`, `scorers.py` | Datasets, frozen split, tie-aware metrics, scorer registry |
@@ -93,7 +93,7 @@ converts offset timestamps to UTC.
 | One feed times out or returns 5xx | Retried up to 3 times; then recorded as failed, other feeds continue |
 | Feed returns HTML or malformed XML | Recorded as `malformed`/`empty`; run status becomes `partial` |
 | Fewer than 50% of feeds succeed | `run` exits 2, the run is recorded as `failed`, nothing is published |
-| LLM unavailable, refused, malformed or over budget | Rule score is kept and recorded as `rules-v2.1`, so it is retried later |
+| LLM unavailable, refused, malformed or over budget | Rule score is kept and recorded with the current rule-set ID, so it is retried later |
 | Saved database cannot be downloaded in CI | The workflow fails instead of starting an empty history |
 | Data validation or site check fails | The workflow fails before upload; the previous site stays live |
 | Pipeline stops running | The dashboard shows a stale-data banner from its own timestamps |

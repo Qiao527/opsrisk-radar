@@ -39,6 +39,8 @@ def test_ongoing_interruptions_are_high(title, summary):
         "Shippers warn of possible rail strike next month",
         "Regulators propose new tariffs on steel imports",
         "Hurricane season outlook points to above-average storms",
+        "Strike deadline pushed to next Friday at Port of Los Angeles",
+        "Strike deadline at Bay Area ports delayed again",
     ],
 )
 def test_resolved_or_speculative_events_are_medium_not_high(title):
@@ -95,7 +97,7 @@ def test_interruption_only_in_summary_is_medium():
 def test_every_score_is_explained():
     a = assess("Typhoon closes ports in southern China", "")
     detail = a.as_detail()
-    assert detail["scorer"] == "rules-v2.1"
+    assert detail["scorer"] == "rules-v2.2"
     assert detail["reason"]
     assert "severe_weather" in detail["categories"]
 

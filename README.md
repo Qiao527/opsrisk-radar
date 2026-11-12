@@ -56,7 +56,7 @@ that generated directory or pass `--out` with a new path to build again.
 |------------|-------|
 | Ingestion, storage, scoring, dashboard build | **Implemented and tested** |
 | Scheduled pipeline and Pages deployment | **Implemented**; see [automation](docs/automation.md) for setup and operational limits |
-| Rule-based scorer rules-v2.1 | **Default.** Evaluated only against machine-suggested labels |
+| Rule-based scorer rules-v2.2 | **Default.** Previous v2.1 evaluated only against machine-suggested labels; v2.2 has not been evaluated on human labels |
 | LLM and hybrid scorers | **Implemented and tested with mocks; not run against the live API** (no key configured) |
 | Human-labeled evaluation | **Pending**: 0 / 100 rows labeled |
 
@@ -67,7 +67,7 @@ flowchart LR
     A[9 trade-press<br/>RSS feeds] --> B[Fetch<br/>retries, timeouts]
     B --> C[Normalize<br/>dedupe, canonical URL, UTC]
     C --> D[(SQLite<br/>history + provenance)]
-    D --> E[Score<br/>rules-v2.1 / hybrid]
+    D --> E[Score<br/>rules-v2.2 / hybrid]
     E --> D
     D --> F[Static site<br/>GitHub Pages]
     G[Labeled eval set<br/>frozen test split] --> H[Evaluate]
